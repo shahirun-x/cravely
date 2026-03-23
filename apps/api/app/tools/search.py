@@ -5,26 +5,32 @@ All tools are async and accept a psycopg AsyncConnection as the first argument.
 
 import json
 import os
-from typing import List, Optional
+from typing import Optional
 
-import google.generativeai as genai
+from google import genai
 
-EMBEDDING_MODEL = "models/text-embedding-004"
+# ── Module-level Gemini client (set during app startup) ──
 
-# Configure Gemini on import
-_api_key = os.getenv("GOOGLE_GEMINI_API_KEY")
-if _api_key:
-    genai.configure(api_key=_api_key)
+_gemini_client: genai.Client | None = None
+
+EMBEDDING_MODEL = "text-embedding-004"
+
+
+def set_gemini_client(client: genai.Client) -> None:
+    """Called from app startup to inject the Gemini client."""
+    global _gemini_client
+    _gemini_client = client
 
 
 def _get_embedding(text: str) -> list[float]:
     """Generate a 768-dim embedding for the given text."""
-    result = genai.embed_content(
+    if _gemini_client is None:
+        raise RuntimeError("Gemini client not initialized. Call set_gemini_client() first.")
+    result = _gemini_client.models.embed_content(
         model=EMBEDDING_MODEL,
-        content=text,
-        task_type="retrieval_query",
+        contents=text,
     )
-    return result["embedding"]
+    return result.embeddings[0].values
 
 
 async def semantic_search(
@@ -76,8 +82,8 @@ async def semantic_search(
     results = []
     for row in rows:
         d = dict(zip(columns, row))
-        d["cuisines"] = d["cuisines"] if isinstance(d["cuisines"], list) else json.loads(d["cuisines"]) if d["cuisines"] else []
-        d["top_dishes"] = d["top_dishes"] if isinstance(d["top_dishes"], list) else json.loads(d["top_dishes"]) if d["top_dishes"] else []
+        d["cuisines"] = d["cuisines"] if isinstance(d["cuisines"], list) else json.loads(str(d["cuisines"])) if d["cuisines"] else []
+        d["top_dishes"] = d["top_dishes"] if isinstance(d["top_dishes"], list) else json.loads(str(d["top_dishes"])) if d["top_dishes"] else []
         if d.get("timings") and isinstance(d["timings"], str):
             d["timings"] = json.loads(d["timings"])
         d.pop("similarity", None)
@@ -159,8 +165,8 @@ async def filter_search(
     results = []
     for row in rows:
         d = dict(zip(columns, row))
-        d["cuisines"] = d["cuisines"] if isinstance(d["cuisines"], list) else json.loads(d["cuisines"]) if d["cuisines"] else []
-        d["top_dishes"] = d["top_dishes"] if isinstance(d["top_dishes"], list) else json.loads(d["top_dishes"]) if d["top_dishes"] else []
+        d["cuisines"] = d["cuisines"] if isinstance(d["cuisines"], list) else json.loads(str(d["cuisines"])) if d["cuisines"] else []
+        d["top_dishes"] = d["top_dishes"] if isinstance(d["top_dishes"], list) else json.loads(str(d["top_dishes"])) if d["top_dishes"] else []
         if d.get("timings") and isinstance(d["timings"], str):
             d["timings"] = json.loads(d["timings"])
         d["id"] = str(d["id"])
@@ -211,9 +217,12 @@ async def get_restaurant_detail(conn, restaurant_id: str) -> dict | None:
         return None
 
     d = dict(zip(columns, row))
-    d["cuisines"] = d["cuisines"] if isinstance(d["cuisines"], list) else json.loads(d["cuisines"]) if d["cuisines"] else []
-    d["menu_items"] = d["menu_items"] if isinstance(d["menu_items"], list) else json.loads(d["menu_items"]) if d["menu_items"] else []
-    d["top_dishes"] = [item["name"] for item in d["menu_items"][:3]]
+    d["cuisines"] = d["cuisines"] if isinstance(d["cuisines"], list) else json.loads(str(d["cuisines"])) if d["cuisines"] else []
+    menu_items = d.get("menu_items", [])
+    if not isinstance(menu_items, list):
+        menu_items = json.loads(str(menu_items)) if menu_items else []
+    d["menu_items"] = menu_items
+    d["top_dishes"] = [item["name"] for item in menu_items[:3]]
     if d.get("timings") and isinstance(d["timings"], str):
         d["timings"] = json.loads(d["timings"])
     d["id"] = str(d["id"])

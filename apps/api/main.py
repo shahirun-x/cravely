@@ -1,3 +1,4 @@
+import logging
 import os
 from contextlib import asynccontextmanager
 
@@ -8,22 +9,36 @@ from fastapi.middleware.cors import CORSMiddleware
 # Load environment variables before anything else
 load_dotenv()
 
-import google.generativeai as genai
+from google import genai
 
+from app.agent.nodes import set_gemini_client as set_nodes_client
 from app.db.connection import close_pool, init_pool
 from app.routes.chat import router as chat_router
+from app.tools.search import set_gemini_client as set_tools_client
 
-# Configure Gemini globally
-gemini_key = os.getenv("GOOGLE_GEMINI_API_KEY")
-if gemini_key:
-    genai.configure(api_key=gemini_key)
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Startup/shutdown lifecycle for database pool."""
+    """Startup/shutdown lifecycle for database pool + Gemini client."""
+    # Initialize Gemini client
+    gemini_key = os.getenv("GOOGLE_GEMINI_API_KEY")
+    if gemini_key:
+        client = genai.Client(api_key=gemini_key)
+        app.state.gemini = client
+        set_nodes_client(client)
+        set_tools_client(client)
+        logger.info("Gemini client initialized")
+    else:
+        app.state.gemini = None
+        logger.warning("GOOGLE_GEMINI_API_KEY not set — LLM features disabled")
+
+    # Initialize DB pool
     await init_pool()
+
     yield
+
     await close_pool()
 
 

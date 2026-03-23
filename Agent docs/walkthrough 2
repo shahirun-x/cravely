@@ -1,0 +1,64 @@
+# Phase 2 Walkthrough — LangGraph Agent
+
+## What Was Built
+
+Complete LangGraph agent for Cravely — a stateful 4-node graph that processes every user query:
+
+```
+user_message → [intent_classifier] → [query_builder] → [executor] → [response_formatter] → final_response
+                     ↓ (chitchat/unclear)                                    ↑
+                     └────────────────────────────────────────────────────────┘
+```
+
+## Files Created/Modified
+
+| File | Purpose |
+|---|---|
+| [connection.py](file:///c:/Users/user/Desktop/Shahirun/Cravely/apps/api/app/db/connection.py) | Async DB pool (psycopg_pool), [get_db()](file:///c:/Users/user/Desktop/Shahirun/Cravely/apps/api/app/db/connection.py#43-50) context manager |
+| [schemas.py](file:///c:/Users/user/Desktop/Shahirun/Cravely/apps/api/app/models/schemas.py) | 4 Pydantic models: [RestaurantResult](file:///c:/Users/user/Desktop/Shahirun/Cravely/apps/api/app/models/schemas.py#10-26), [MenuItemResult](file:///c:/Users/user/Desktop/Shahirun/Cravely/apps/api/app/models/schemas.py#28-38), [AgentResponse](file:///c:/Users/user/Desktop/Shahirun/Cravely/apps/api/app/models/schemas.py#40-48), [ChatRequest](file:///c:/Users/user/Desktop/Shahirun/Cravely/apps/api/app/models/schemas.py#50-58) |
+| [search.py](file:///c:/Users/user/Desktop/Shahirun/Cravely/apps/api/app/tools/search.py) | 5 tools: [semantic_search](file:///c:/Users/user/Desktop/Shahirun/Cravely/apps/api/app/tools/search.py#30-88), [filter_search](file:///c:/Users/user/Desktop/Shahirun/Cravely/apps/api/app/tools/search.py#90-170), [get_restaurant_detail](file:///c:/Users/user/Desktop/Shahirun/Cravely/apps/api/app/tools/search.py#172-221), [get_user_preferences](file:///c:/Users/user/Desktop/Shahirun/Cravely/apps/api/app/tools/search.py#223-247), [save_to_favorites](file:///c:/Users/user/Desktop/Shahirun/Cravely/apps/api/app/tools/search.py#249-265) |
+| [state.py](file:///c:/Users/user/Desktop/Shahirun/Cravely/apps/api/app/agent/state.py) | [AgentState](file:///c:/Users/user/Desktop/Shahirun/Cravely/apps/api/app/agent/state.py#8-30) TypedDict |
+| [prompts.py](file:///c:/Users/user/Desktop/Shahirun/Cravely/apps/api/app/agent/prompts.py) | `INTENT_CLASSIFIER_PROMPT` + `RESPONSE_FORMATTER_PROMPT` |
+| [nodes.py](file:///c:/Users/user/Desktop/Shahirun/Cravely/apps/api/app/agent/nodes.py) | 4 nodes: intent_classifier, query_builder, executor, response_formatter |
+| [graph.py](file:///c:/Users/user/Desktop/Shahirun/Cravely/apps/api/app/agent/graph.py) | `StateGraph` with conditional edge (skips tools for chitchat/unclear) |
+| [chat.py](file:///c:/Users/user/Desktop/Shahirun/Cravely/apps/api/app/routes/chat.py) | `POST /api/v1/chat` endpoint with async conversation logging |
+| [main.py](file:///c:/Users/user/Desktop/Shahirun/Cravely/apps/api/main.py) | Updated with lifespan, dotenv, Gemini config, chat router |
+| [requirements.txt](file:///c:/Users/user/Desktop/Shahirun/Cravely/apps/api/requirements.txt) | Added `psycopg[binary,pool]` |
+
+## Verification Results
+
+**1. All imports pass:**
+```
+venv\Scripts\python.exe -c "from app.agent.graph import agent; ..."
+→ All imports OK
+```
+
+**2. Server boots successfully:**
+```
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000
+```
+
+**3. Health endpoint:**
+```json
+{"status":"ok","service":"cravely-api"}
+```
+
+**4. Chat endpoint (without DB/Gemini keys — graceful fallback):**
+```
+POST /api/v1/chat  {"message":"I want biryani in T. Nagar","channel":"web","city":"Chennai"}
+→ 200 OK
+→ Returns AgentResponse with message, session_id, intent, tool_used
+```
+
+## To Fully Test With Live API
+
+Create `apps/api/.env` with real credentials:
+```
+SUPABASE_DATABASE_URL=postgresql://...
+GOOGLE_GEMINI_API_KEY=...
+UPSTASH_REDIS_REST_URL=...
+UPSTASH_REDIS_REST_TOKEN=...
+```
+
+Then run: `venv\Scripts\uvicorn.exe main:app --reload`

@@ -2,9 +2,8 @@ fastapi
 uvicorn[standard]
 psycopg[binary,pool]
 pgvector
-google-generativeai
+google-genai
 langgraph
-langchain-google-genai
 upstash-redis
 python-dotenv
 pydantic

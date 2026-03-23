@@ -8,7 +8,7 @@ import os
 import uuid
 from typing import Any
 
-import google.generativeai as genai
+from google import genai
 from upstash_redis import Redis
 
 from app.agent.prompts import INTENT_CLASSIFIER_PROMPT, RESPONSE_FORMATTER_PROMPT
@@ -23,6 +23,17 @@ from app.tools.search import (
 )
 
 logger = logging.getLogger(__name__)
+
+# ── Module-level Gemini client (set during app startup) ──
+
+_gemini_client: genai.Client | None = None
+
+
+def set_gemini_client(client: genai.Client) -> None:
+    """Called from app startup to inject the Gemini client."""
+    global _gemini_client
+    _gemini_client = client
+
 
 # ── Redis client (Upstash HTTP) ──
 
@@ -42,12 +53,17 @@ def _get_redis() -> Redis | None:
 # ── Gemini helper ──
 
 def _call_gemini(system_prompt: str, user_message: str) -> str:
-    """Call Gemini 2.5 Flash and return the text response."""
-    model = genai.GenerativeModel(
-        "gemini-2.5-flash-preview-05-20",
-        system_instruction=system_prompt,
+    """Call Gemini 2.5 Flash via the new google-genai SDK and return the text."""
+    if _gemini_client is None:
+        raise RuntimeError("Gemini client not initialized. Call set_gemini_client() first.")
+
+    response = _gemini_client.models.generate_content(
+        model="gemini-2.5-flash-preview-05-20",
+        contents=user_message,
+        config=genai.types.GenerateContentConfig(
+            system_instruction=system_prompt,
+        ),
     )
-    response = model.generate_content(user_message)
     return response.text.strip()
 
 
@@ -117,7 +133,7 @@ async def intent_classifier_node(state: AgentState) -> dict[str, Any]:
 
         parsed = json.loads(raw)
     except (json.JSONDecodeError, Exception) as e:
-        logger.error(f"Intent classification failed: {e}\nRaw: {raw if 'raw' in dir() else 'N/A'}")
+        logger.error(f"Intent classification failed: {e}")
         parsed = {
             "intent": "unclear",
             "extracted_params": {"query_text": state["message"]},
