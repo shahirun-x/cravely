@@ -1,0 +1,32 @@
+# Cravely Phase 2 — LangGraph Agent
+
+## 1. Database Connection
+- [ ] Create `app/db/connection.py` — async pool, get_db(), lifespan
+
+## 2. Pydantic Models
+- [ ] Create `app/models/schemas.py` — RestaurantResult, MenuItemResult, AgentResponse, ChatRequest
+
+## 3. Tools
+- [ ] Create `app/tools/search.py` — 5 tool functions (semantic_search, filter_search, get_restaurant_detail, get_user_preferences, save_to_favorites)
+
+## 4. Agent State
+- [ ] Create `app/agent/state.py` — AgentState TypedDict
+
+## 5. System Prompts
+- [ ] Create `app/agent/prompts.py` — INTENT_CLASSIFIER_PROMPT, RESPONSE_FORMATTER_PROMPT
+
+## 6. Agent Nodes
+- [ ] Create `app/agent/nodes.py` — 4 node functions
+
+## 7. Graph Definition
+- [ ] Create `app/agent/graph.py` — StateGraph with conditional edges
+
+## 8. Chat Route
+- [ ] Create `app/routes/chat.py` — POST /chat endpoint
+
+## 9. Main App Update
+- [ ] Update [main.py](file:///c:/Users/user/Desktop/Shahirun/Cravely/apps/api/main.py) — lifespan + router inclusion
+
+## 10. Verification
+- [ ] FastAPI boots without errors
+- [ ] POST /api/v1/chat returns structured AgentResponse
