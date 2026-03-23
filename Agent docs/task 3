@@ -1,0 +1,13 @@
+# Phase 3A — Auth System & Onboarding
+
+- [ ] Copy [.env.local.example](file:///c:/Users/user/Desktop/Shahirun/Cravely/apps/web/.env.local.example) → `.env.local`
+- [ ] Update [README.md](file:///c:/Users/user/Desktop/Shahirun/Cravely/README.md) with Supabase Google OAuth setup instructions
+- [ ] Create `middleware.ts` — protected routes
+- [ ] Create `app/auth/callback/route.ts` — OAuth callback
+- [ ] Create `lib/supabase/user.ts` — user profile helpers
+- [ ] Create `app/login/page.tsx` — Google OAuth login page
+- [ ] Create `app/onboarding/page.tsx` — 3-step wizard
+- [ ] Update [app/page.tsx](file:///c:/Users/user/Desktop/Shahirun/Cravely/apps/web/app/page.tsx) — landing page
+- [ ] Update [app/layout.tsx](file:///c:/Users/user/Desktop/Shahirun/Cravely/apps/web/app/layout.tsx) — metadata
+- [ ] Run `npm run dev` — zero build errors
+- [ ] Screenshot login + landing pages

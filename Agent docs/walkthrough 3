@@ -1,0 +1,36 @@
+# Phase 3A — Auth System & Onboarding Walkthrough
+
+## What was built
+
+Complete Google OAuth auth system with protected routes, 3-step onboarding wizard, landing page, and user profile helpers.
+
+## Files Created/Modified
+
+| File | Purpose |
+|---|---|
+| [middleware.ts](file:///c:/Users/user/Desktop/Shahirun/Cravely/apps/web/middleware.ts) | Protects `/chat`, `/profile`, `/onboarding`; redirects `/login` for authed users |
+| [app/auth/callback/route.ts](file:///c:/Users/user/Desktop/Shahirun/Cravely/apps/web/app/auth/callback/route.ts) | Exchanges OAuth code, routes new→onboarding, existing→chat |
+| [lib/supabase/user.ts](file:///c:/Users/user/Desktop/Shahirun/Cravely/apps/web/lib/supabase/user.ts) | [createUserProfile()](file:///c:/Users/user/Desktop/Shahirun/Cravely/apps/web/lib/supabase/user.ts#3-26) + [saveUserPreferences()](file:///c:/Users/user/Desktop/Shahirun/Cravely/apps/web/lib/supabase/user.ts#27-74) helpers |
+| [app/login/page.tsx](file:///c:/Users/user/Desktop/Shahirun/Cravely/apps/web/app/login/page.tsx) | Google OAuth login with dot grid background |
+| [app/onboarding/page.tsx](file:///c:/Users/user/Desktop/Shahirun/Cravely/apps/web/app/onboarding/page.tsx) | 3-step wizard: dietary→cuisines→neighborhoods |
+| [app/chat/page.tsx](file:///c:/Users/user/Desktop/Shahirun/Cravely/apps/web/app/chat/page.tsx) | Placeholder for redirect target |
+| [app/page.tsx](file:///c:/Users/user/Desktop/Shahirun/Cravely/apps/web/app/page.tsx) | Landing page with hero + CTA |
+| [app/layout.tsx](file:///c:/Users/user/Desktop/Shahirun/Cravely/apps/web/app/layout.tsx) | Updated metadata |
+| [README.md](file:///c:/Users/user/Desktop/Shahirun/Cravely/README.md) | Google OAuth setup instructions |
+| `.env.local` | Copied from example |
+
+## Screenshots
+
+### Landing Page
+![Landing page with hero, CTA, and dot grid background](file:///C:/Users/user/.gemini/antigravity/brain/0aa20282-b314-437d-ac93-482fcbee51db/landing_page_cravely_1774256761139.png)
+
+### Login Page
+![Login page with Google OAuth button and Cravely branding](file:///C:/Users/user/.gemini/antigravity/brain/0aa20282-b314-437d-ac93-482fcbee51db/login_page_cravely_1774256750767.png)
+
+## Verification
+
+- ✅ `npm run dev` — zero build errors (Next.js 16.2.1 Turbopack)
+- ✅ Landing page renders at `localhost:3000` with hero + orange CTA
+- ✅ Login page renders at `localhost:3000/login` with Google button + dot grid
+- ✅ Middleware redirects unauthenticated users from `/chat` to `/login`
+- ✅ All helper functions exist in [lib/supabase/user.ts](file:///c:/Users/user/Desktop/Shahirun/Cravely/apps/web/lib/supabase/user.ts)

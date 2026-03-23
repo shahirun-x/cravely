@@ -58,7 +58,7 @@ def _call_gemini(system_prompt: str, user_message: str) -> str:
         raise RuntimeError("Gemini client not initialized. Call set_gemini_client() first.")
 
     response = _gemini_client.models.generate_content(
-        model="gemini-2.5-flash-preview-05-20",
+        model="gemini-2.5-flash",
         contents=user_message,
         config=genai.types.GenerateContentConfig(
             system_instruction=system_prompt,
