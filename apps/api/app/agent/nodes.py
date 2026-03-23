@@ -182,17 +182,20 @@ async def query_builder_node(state: AgentState) -> dict[str, Any]:
         return {"tool_used": "get_restaurant_detail"}
 
     # find_restaurant or find_dish
-    has_specific_filters = any([
+    has_any_params = any([
         params.get("neighborhood"),
         params.get("cuisine"),
         params.get("price_range"),
-        params.get("is_veg") is not None,
+        params.get("is_veg") is not None and params.get("is_veg") is not None,
+        params.get("query_text"),
     ])
 
-    if intent == "find_dish" or (intent == "find_restaurant" and not has_specific_filters):
-        return {"tool_used": "semantic_search"}
+    # Always prefer filter_search for find_restaurant when we have params
+    if intent == "find_restaurant" and has_any_params:
+        return {"tool_used": "filter_search"}
 
-    return {"tool_used": "filter_search"}
+    # find_dish or find_restaurant with no params → semantic search
+    return {"tool_used": "semantic_search"}
 
 
 # ═══════════════════════════════════════════════════════════════════
