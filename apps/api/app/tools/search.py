@@ -1,10 +1,9 @@
 """
 Database search tools for the Cravely agent.
-All tools are async and accept a psycopg AsyncConnection as the first argument.
+All tools are async and accept an asyncpg Connection as the first argument.
 """
 
 import json
-import os
 from typing import Optional
 
 from google import genai
@@ -33,6 +32,25 @@ def _get_embedding(text: str) -> list[float]:
     return result.embeddings[0].values
 
 
+def _row_to_dict(row) -> dict:
+    """Convert an asyncpg Record to a dict."""
+    return dict(row)
+
+
+def _parse_json_field(value):
+    """Parse a JSON field that may be a string, list, or None."""
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return value
+    if isinstance(value, str):
+        try:
+            return json.loads(value)
+        except json.JSONDecodeError:
+            return []
+    return []
+
+
 async def semantic_search(
     conn,
     query_text: str,
@@ -51,7 +69,7 @@ async def semantic_search(
             r.avg_rating, r.price_range, r.is_pure_veg, r.timings,
             r.zomato_url, r.swiggy_url,
             n.name AS neighborhood,
-            1 - (r.embedding <=> %s::vector) AS similarity,
+            1 - (r.embedding <=> $1::vector) AS similarity,
             COALESCE(
                 (SELECT json_agg(c2.name)
                  FROM restaurant_cuisines rc2
@@ -69,21 +87,18 @@ async def semantic_search(
         FROM restaurants r
         JOIN neighborhoods n ON r.neighborhood_id = n.id
         JOIN cities c ON n.city_id = c.id
-        WHERE c.name = %s AND r.is_active = true AND r.embedding IS NOT NULL
+        WHERE c.name = $2 AND r.is_active = true AND r.embedding IS NOT NULL
         ORDER BY similarity DESC
-        LIMIT %s
+        LIMIT $3
     """
 
-    async with conn.cursor() as cur:
-        await cur.execute(sql, (embedding_str, city, limit))
-        columns = [desc[0] for desc in cur.description]
-        rows = await cur.fetchall()
+    rows = await conn.fetch(sql, embedding_str, city, limit)
 
     results = []
     for row in rows:
-        d = dict(zip(columns, row))
-        d["cuisines"] = d["cuisines"] if isinstance(d["cuisines"], list) else json.loads(str(d["cuisines"])) if d["cuisines"] else []
-        d["top_dishes"] = d["top_dishes"] if isinstance(d["top_dishes"], list) else json.loads(str(d["top_dishes"])) if d["top_dishes"] else []
+        d = _row_to_dict(row)
+        d["cuisines"] = _parse_json_field(d.get("cuisines"))
+        d["top_dishes"] = _parse_json_field(d.get("top_dishes"))
         if d.get("timings") and isinstance(d["timings"], str):
             d["timings"] = json.loads(d["timings"])
         d.pop("similarity", None)
@@ -105,24 +120,28 @@ async def filter_search(
     """
     Structured SQL search — no embeddings. Dynamically builds WHERE clause.
     """
-    conditions = ["c.name = %s", "r.is_active = true"]
+    conditions = ["c.name = $1", "r.is_active = true"]
     params: list = [city]
+    param_idx = 2
 
     if neighborhood:
-        conditions.append("LOWER(n.name) = LOWER(%s)")
+        conditions.append(f"LOWER(n.name) = LOWER(${param_idx})")
         params.append(neighborhood)
+        param_idx += 1
     if cuisine:
-        conditions.append("""
+        conditions.append(f"""
             EXISTS (
                 SELECT 1 FROM restaurant_cuisines rc2
                 JOIN cuisines c2 ON rc2.cuisine_id = c2.id
-                WHERE rc2.restaurant_id = r.id AND LOWER(c2.name) = LOWER(%s)
+                WHERE rc2.restaurant_id = r.id AND LOWER(c2.name) = LOWER(${param_idx})
             )
         """)
         params.append(cuisine)
+        param_idx += 1
     if price_range is not None:
-        conditions.append("r.price_range = %s")
+        conditions.append(f"r.price_range = ${param_idx}")
         params.append(price_range)
+        param_idx += 1
     if is_veg is True:
         conditions.append("r.is_pure_veg = true")
 
@@ -154,19 +173,16 @@ async def filter_search(
         JOIN cities c ON n.city_id = c.id
         WHERE {where_clause}
         ORDER BY r.avg_rating DESC NULLS LAST
-        LIMIT %s
+        LIMIT ${param_idx}
     """
 
-    async with conn.cursor() as cur:
-        await cur.execute(sql, params)
-        columns = [desc[0] for desc in cur.description]
-        rows = await cur.fetchall()
+    rows = await conn.fetch(sql, *params)
 
     results = []
     for row in rows:
-        d = dict(zip(columns, row))
-        d["cuisines"] = d["cuisines"] if isinstance(d["cuisines"], list) else json.loads(str(d["cuisines"])) if d["cuisines"] else []
-        d["top_dishes"] = d["top_dishes"] if isinstance(d["top_dishes"], list) else json.loads(str(d["top_dishes"])) if d["top_dishes"] else []
+        d = _row_to_dict(row)
+        d["cuisines"] = _parse_json_field(d.get("cuisines"))
+        d["top_dishes"] = _parse_json_field(d.get("top_dishes"))
         if d.get("timings") and isinstance(d["timings"], str):
             d["timings"] = json.loads(d["timings"])
         d["id"] = str(d["id"])
@@ -205,24 +221,19 @@ async def get_restaurant_detail(conn, restaurant_id: str) -> dict | None:
             ) AS menu_items
         FROM restaurants r
         JOIN neighborhoods n ON r.neighborhood_id = n.id
-        WHERE r.id = %s::uuid
+        WHERE r.id = $1::uuid
     """
 
-    async with conn.cursor() as cur:
-        await cur.execute(sql, (restaurant_id,))
-        columns = [desc[0] for desc in cur.description]
-        row = await cur.fetchone()
+    row = await conn.fetchrow(sql, restaurant_id)
 
     if not row:
         return None
 
-    d = dict(zip(columns, row))
-    d["cuisines"] = d["cuisines"] if isinstance(d["cuisines"], list) else json.loads(str(d["cuisines"])) if d["cuisines"] else []
-    menu_items = d.get("menu_items", [])
-    if not isinstance(menu_items, list):
-        menu_items = json.loads(str(menu_items)) if menu_items else []
+    d = _row_to_dict(row)
+    d["cuisines"] = _parse_json_field(d.get("cuisines"))
+    menu_items = _parse_json_field(d.get("menu_items"))
     d["menu_items"] = menu_items
-    d["top_dishes"] = [item["name"] for item in menu_items[:3]]
+    d["top_dishes"] = [item["name"] for item in menu_items[:3]] if menu_items else []
     if d.get("timings") and isinstance(d["timings"], str):
         d["timings"] = json.loads(d["timings"])
     d["id"] = str(d["id"])
@@ -237,21 +248,19 @@ async def get_user_preferences(conn, user_id: Optional[str]) -> dict:
     sql = """
         SELECT dietary, favorite_cuisines, preferred_neighborhoods, price_range_max
         FROM user_preferences
-        WHERE user_id = %s::uuid
+        WHERE user_id = $1::uuid
     """
 
-    async with conn.cursor() as cur:
-        await cur.execute(sql, (user_id,))
-        row = await cur.fetchone()
+    row = await conn.fetchrow(sql, user_id)
 
     if not row:
         return {}
 
     return {
-        "dietary": row[0] or [],
-        "favorite_cuisines": [str(c) for c in (row[1] or [])],
-        "preferred_neighborhoods": [str(n) for n in (row[2] or [])],
-        "price_range_max": row[3],
+        "dietary": row["dietary"] or [],
+        "favorite_cuisines": [str(c) for c in (row["favorite_cuisines"] or [])],
+        "preferred_neighborhoods": [str(n) for n in (row["preferred_neighborhoods"] or [])],
+        "price_range_max": row["price_range_max"],
     }
 
 
@@ -262,12 +271,10 @@ async def save_to_favorites(conn, user_id: str, restaurant_id: str) -> dict:
 
     sql = """
         INSERT INTO favorites (user_id, restaurant_id)
-        VALUES (%s::uuid, %s::uuid)
+        VALUES ($1::uuid, $2::uuid)
         ON CONFLICT DO NOTHING
     """
 
-    async with conn.cursor() as cur:
-        await cur.execute(sql, (user_id, restaurant_id))
-    await conn.commit()
+    await conn.execute(sql, user_id, restaurant_id)
 
     return {"success": True}

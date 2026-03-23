@@ -3,6 +3,7 @@ Chat API route — the main user-facing endpoint.
 """
 
 import asyncio
+import json
 import logging
 import uuid
 from typing import Optional
@@ -27,49 +28,46 @@ async def _log_conversation(
     intent: str,
     tool_used: str,
 ) -> None:
-    """Fire-and-forget: log conversation to Supabase."""
+    """Fire-and-forget: log conversation to Supabase using asyncpg."""
     try:
         async with get_db() as conn:
-            async with conn.cursor() as cur:
-                # Upsert conversation
-                await cur.execute(
-                    """
-                    INSERT INTO conversations (id, user_id, channel, session_id)
-                    VALUES (gen_random_uuid(), %s, %s, %s)
-                    ON CONFLICT DO NOTHING
-                    """,
-                    (user_id, channel, session_id),
-                )
+            # Upsert conversation
+            await conn.execute(
+                """
+                INSERT INTO conversations (id, user_id, channel, session_id)
+                VALUES (gen_random_uuid(), $1, $2, $3)
+                ON CONFLICT DO NOTHING
+                """,
+                user_id, channel, session_id,
+            )
 
-                # Get conversation id
-                await cur.execute(
-                    "SELECT id FROM conversations WHERE session_id = %s LIMIT 1",
-                    (session_id,),
-                )
-                row = await cur.fetchone()
-                if not row:
-                    return
-                conv_id = row[0]
+            # Get conversation id
+            row = await conn.fetchrow(
+                "SELECT id FROM conversations WHERE session_id = $1 LIMIT 1",
+                session_id,
+            )
+            if not row:
+                return
+            conv_id = row["id"]
 
-                # Insert user message
-                await cur.execute(
-                    """
-                    INSERT INTO messages (id, conversation_id, role, content)
-                    VALUES (gen_random_uuid(), %s, 'user', %s)
-                    """,
-                    (conv_id, user_message),
-                )
+            # Insert user message
+            await conn.execute(
+                """
+                INSERT INTO messages (id, conversation_id, role, content)
+                VALUES (gen_random_uuid(), $1, 'user', $2)
+                """,
+                conv_id, user_message,
+            )
 
-                # Insert assistant message
-                await cur.execute(
-                    """
-                    INSERT INTO messages (id, conversation_id, role, content, tool_calls)
-                    VALUES (gen_random_uuid(), %s, 'assistant', %s, %s::jsonb)
-                    """,
-                    (conv_id, assistant_message, f'{{"intent": "{intent}", "tool": "{tool_used}"}}'),
-                )
-
-            await conn.commit()
+            # Insert assistant message
+            tool_calls_json = json.dumps({"intent": intent, "tool": tool_used})
+            await conn.execute(
+                """
+                INSERT INTO messages (id, conversation_id, role, content, tool_calls)
+                VALUES (gen_random_uuid(), $1, 'assistant', $2, $3::jsonb)
+                """,
+                conv_id, assistant_message, tool_calls_json,
+            )
     except Exception as e:
         logger.warning(f"Conversation logging failed: {e}")
 

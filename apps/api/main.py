@@ -12,7 +12,7 @@ load_dotenv()
 from google import genai
 
 from app.agent.nodes import set_gemini_client as set_nodes_client
-from app.db.connection import close_pool, init_pool
+from app.db.connection import open_pool, close_pool
 from app.routes.chat import router as chat_router
 from app.tools.search import set_gemini_client as set_tools_client
 
@@ -35,7 +35,7 @@ async def lifespan(app: FastAPI):
         logger.warning("GOOGLE_GEMINI_API_KEY not set — LLM features disabled")
 
     # Initialize DB pool
-    await init_pool()
+    await open_pool()
 
     yield
 

@@ -1,9 +1,10 @@
 fastapi
 uvicorn[standard]
-psycopg[binary,pool]
+asyncpg
 pgvector
 google-genai
 langgraph
 upstash-redis
 python-dotenv
 pydantic
+psycopg[binary]
