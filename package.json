@@ -1,9 +1,10 @@
 {
   "name": "cravely",
-  "version": "0.1.0",
   "private": true,
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ]
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev:web": "npm run dev --workspace=apps/web",
+    "dev:api": "cd apps/api && uvicorn main:app --reload --port 8000",
+    "build": "npm run build --workspace=apps/web"
+  }
 }
