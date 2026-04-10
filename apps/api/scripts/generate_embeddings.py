@@ -12,33 +12,36 @@ import os
 import time
 from pathlib import Path
 
-import google.generativeai as genai
 import psycopg
 from dotenv import load_dotenv
+from google import genai
 
 # Load environment variables
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 DATABASE_URL = os.getenv("SUPABASE_DATABASE_URL")
 GEMINI_API_KEY = os.getenv("GOOGLE_GEMINI_API_KEY")
-EMBEDDING_MODEL = "models/text-embedding-004"
+EMBEDDING_MODEL = "gemini-embedding-001"
 BATCH_SIZE = 20
 SLEEP_BETWEEN_BATCHES = 1  # seconds
 
+# Initialize the new google-genai client
+client = genai.Client(api_key=GEMINI_API_KEY)
+
 
 def get_embedding(text: str) -> list[float]:
-    """Generate a 768-dim embedding for the given text."""
-    result = genai.embed_content(
+    """Generate a 768-dim embedding for the given text (matching DB vector(768))."""
+    response = client.models.embed_content(
         model=EMBEDDING_MODEL,
-        content=text,
-        task_type="retrieval_document",
+        contents=text,
+        config={"output_dimensionality": 768},
     )
-    return result["embedding"]
+    return response.embeddings[0].values
 
 
 def embed_restaurants(conn) -> None:
     """Fetch restaurants with NULL embedding and generate embeddings."""
-    print("\n📍 Embedding restaurants...")
+    print("\n[*] Embedding restaurants...")
 
     with conn.cursor() as cur:
         # Fetch restaurants needing embeddings, with their cuisines and neighborhood
@@ -62,7 +65,7 @@ def embed_restaurants(conn) -> None:
 
     total = len(rows)
     if total == 0:
-        print("  ✅ All restaurants already have embeddings.")
+        print("  [OK] All restaurants already have embeddings.")
         return
 
     print(f"  Found {total} restaurants to embed.")
@@ -87,21 +90,21 @@ def embed_restaurants(conn) -> None:
                     (str(embedding), rid),
                 )
             conn.commit()
-            print(f"  Restaurants: {i}/{total} embedded — {name}")
+            print(f"  Restaurants: {i}/{total} embedded - {name}")
 
         except Exception as e:
-            print(f"  ⚠ Error embedding restaurant '{name}': {e}")
+            print(f"  [WARN] Error embedding restaurant '{name}': {e}")
             conn.rollback()
 
         # Rate limit: pause every BATCH_SIZE items
         if i % BATCH_SIZE == 0 and i < total:
-            print(f"  💤 Sleeping {SLEEP_BETWEEN_BATCHES}s (rate limit)...")
+            print(f"  [..] Sleeping {SLEEP_BETWEEN_BATCHES}s (rate limit)...")
             time.sleep(SLEEP_BETWEEN_BATCHES)
 
 
 def embed_menu_items(conn) -> None:
     """Fetch menu items with NULL embedding and generate embeddings."""
-    print("\n🍽️  Embedding menu items...")
+    print("\n[*] Embedding menu items...")
 
     with conn.cursor() as cur:
         cur.execute("""
@@ -117,7 +120,7 @@ def embed_menu_items(conn) -> None:
 
     total = len(rows)
     if total == 0:
-        print("  ✅ All menu items already have embeddings.")
+        print("  [OK] All menu items already have embeddings.")
         return
 
     print(f"  Found {total} menu items to embed.")
@@ -142,35 +145,32 @@ def embed_menu_items(conn) -> None:
                     (str(embedding), mid),
                 )
             conn.commit()
-            print(f"  Menu items: {i}/{total} embedded — {name}")
+            print(f"  Menu items: {i}/{total} embedded - {name}")
 
         except Exception as e:
-            print(f"  ⚠ Error embedding menu item '{name}': {e}")
+            print(f"  [WARN] Error embedding menu item '{name}': {e}")
             conn.rollback()
 
         # Rate limit
         if i % BATCH_SIZE == 0 and i < total:
-            print(f"  💤 Sleeping {SLEEP_BETWEEN_BATCHES}s (rate limit)...")
+            print(f"  [..] Sleeping {SLEEP_BETWEEN_BATCHES}s (rate limit)...")
             time.sleep(SLEEP_BETWEEN_BATCHES)
 
 
 def main():
     if not DATABASE_URL:
-        print("❌ SUPABASE_DATABASE_URL not found in .env")
+        print("[ERROR] SUPABASE_DATABASE_URL not found in .env")
         return
     if not GEMINI_API_KEY:
-        print("❌ GOOGLE_GEMINI_API_KEY not found in .env")
+        print("[ERROR] GOOGLE_GEMINI_API_KEY not found in .env")
         return
 
-    # Configure Gemini
-    genai.configure(api_key=GEMINI_API_KEY)
-
-    print("🔌 Connecting to database...")
+    print("[*] Connecting to database...")
     with psycopg.connect(DATABASE_URL) as conn:
         embed_restaurants(conn)
         embed_menu_items(conn)
 
-    print("\n🎉 Embedding generation complete!")
+    print("\n[DONE] Embedding generation complete!")
 
 
 if __name__ == "__main__":
