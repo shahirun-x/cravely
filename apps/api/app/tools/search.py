@@ -12,7 +12,7 @@ from google import genai
 
 _gemini_client: genai.Client | None = None
 
-EMBEDDING_MODEL = "text-embedding-004"
+EMBEDDING_MODEL = "gemini-embedding-001"
 
 
 def set_gemini_client(client: genai.Client) -> None:
@@ -28,6 +28,7 @@ def _get_embedding(text: str) -> list[float]:
     result = _gemini_client.models.embed_content(
         model=EMBEDDING_MODEL,
         contents=text,
+        config={"output_dimensionality": 768},
     )
     return result.embeddings[0].values
 

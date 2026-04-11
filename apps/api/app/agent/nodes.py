@@ -5,6 +5,7 @@ LangGraph agent nodes — the 4 processing steps of the Cravely agent.
 import json
 import logging
 import os
+import time
 import uuid
 from typing import Any
 
@@ -53,18 +54,28 @@ def _get_redis() -> Redis | None:
 # ── Gemini helper ──
 
 def _call_gemini(system_prompt: str, user_message: str) -> str:
-    """Call Gemini 2.5 Flash via the new google-genai SDK and return the text."""
+    """Call Gemini 1.5 Flash via the new google-genai SDK and return the text.
+    Retries once on 429 rate-limit errors after a 4-second backoff.
+    """
     if _gemini_client is None:
         raise RuntimeError("Gemini client not initialized. Call set_gemini_client() first.")
 
-    response = _gemini_client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=user_message,
-        config=genai.types.GenerateContentConfig(
-            system_instruction=system_prompt,
-        ),
-    )
-    return response.text.strip()
+    for attempt in range(2):
+        try:
+            response = _gemini_client.models.generate_content(
+                model="gemini-1.5-flash",
+                contents=user_message,
+                config=genai.types.GenerateContentConfig(
+                    system_instruction=system_prompt,
+                ),
+            )
+            return response.text.strip()
+        except Exception as e:
+            if "429" in str(e) and attempt == 0:
+                logger.warning(f"Gemini 429 rate limit hit, retrying in 4s...")
+                time.sleep(4)
+                continue
+            raise
 
 
 # ── Conversation history helpers ──
@@ -169,32 +180,39 @@ async def query_builder_node(state: AgentState) -> dict[str, Any]:
     intent = state.get("intent", "unclear")
     params = state.get("extracted_params", {})
 
-    if intent == "chitchat":
+    # chitchat or unclear → skip to response_formatter directly
+    if intent in ("chitchat", "unclear"):
         return {"tool_used": "none"}
 
-    if intent == "unclear":
-        return {"tool_used": "none"}
-
+    # save_favorite → dedicated tool
     if intent == "save_favorite":
         return {"tool_used": "save_to_favorites"}
 
+    # restaurant_detail → dedicated tool
     if intent == "restaurant_detail":
         return {"tool_used": "get_restaurant_detail"}
 
-    # find_restaurant or find_dish
-    has_any_params = any([
-        params.get("neighborhood"),
-        params.get("cuisine"),
-        params.get("price_range"),
-        params.get("is_veg") is not None and params.get("is_veg") is not None,
-        params.get("query_text"),
-    ])
+    # find_dish → semantic search with item_name
+    if intent == "find_dish":
+        return {"tool_used": "semantic_search"}
 
-    # Always prefer filter_search for find_restaurant when we have params
-    if intent == "find_restaurant" and has_any_params:
-        return {"tool_used": "filter_search"}
+    # find_restaurant → smart routing
+    if intent == "find_restaurant":
+        has_filter_params = any([
+            params.get("neighborhood"),
+            params.get("cuisine"),
+            params.get("price_range") is not None and params.get("price_range"),
+            params.get("is_veg") is not None,
+        ])
 
-    # find_dish or find_restaurant with no params → semantic search
+        if has_filter_params:
+            # Try filter_search first; executor will fallback to semantic if 0 results
+            return {"tool_used": "filter_search"}
+        else:
+            # No structured params → semantic search with query_text
+            return {"tool_used": "semantic_search"}
+
+    # Default fallback
     return {"tool_used": "semantic_search"}
 
 
@@ -230,6 +248,12 @@ async def executor_node(state: AgentState) -> dict[str, Any]:
                     price_range=params.get("price_range"),
                     is_veg=params.get("is_veg"),
                 )
+
+                # Fallback: if filter_search returned 0 results, try semantic_search
+                if not tool_results:
+                    query_text = params.get("query_text") or params.get("item_name") or state["message"]
+                    logger.info(f"filter_search returned 0 results, falling back to semantic_search: {query_text}")
+                    tool_results = await semantic_search(conn, query_text, city=city)
 
             elif tool_used == "get_restaurant_detail":
                 restaurant_id = params.get("restaurant_id")
