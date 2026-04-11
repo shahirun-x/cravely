@@ -1,7 +1,6 @@
 {
   "name": "cravely",
   "private": true,
-  "workspaces": ["apps/*", "packages/*"],
   "scripts": {
     "build": "cd apps/web && npm install && npm run build",
     "dev:web": "cd apps/web && npm run dev",
