@@ -115,6 +115,8 @@ function RestaurantCard({
 }
 
 export default function ChatPanel({ onRestaurantClick }: ChatPanelProps) {
+  console.log('user:', 'none', 'session:', typeof window !== 'undefined' ? sessionStorage.getItem("cravely-session-id") : 'server');
+  
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -154,6 +156,7 @@ export default function ChatPanel({ onRestaurantClick }: ChatPanelProps) {
 
   const sendMessage = useCallback(
     async (text: string) => {
+      console.log('handleSubmit fired', text);
       if (!text.trim() || loading) return;
 
       const userMsg: ChatMessage = {
