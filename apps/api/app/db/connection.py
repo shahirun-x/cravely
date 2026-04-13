@@ -20,6 +20,7 @@ async def open_pool():
         dsn=db_url,
         min_size=1,
         max_size=5,
+        statement_cache_size=0,
     )
     print("Database pool opened successfully")
 

@@ -63,7 +63,7 @@ def _call_gemini(system_prompt: str, user_message: str) -> str:
     for attempt in range(2):
         try:
             response = _gemini_client.models.generate_content(
-                model="gemini-2.0-flash",
+                model="gemini-2.5-flash",
                 contents=user_message,
                 config=genai.types.GenerateContentConfig(
                     system_instruction=system_prompt,
