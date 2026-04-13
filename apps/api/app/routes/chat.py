@@ -31,6 +31,15 @@ async def _log_conversation(
     """Fire-and-forget: log conversation to Supabase using asyncpg."""
     try:
         async with get_db() as conn:
+            if user_id:
+                try:
+                    exists = await conn.fetchval("SELECT id FROM users WHERE id = $1", user_id)
+                    if not exists:
+                        user_id = None
+                except Exception as e:
+                    logger.warning(f"Failed checking user_id: {e}")
+                    user_id = None
+
             # Upsert conversation
             await conn.execute(
                 """
