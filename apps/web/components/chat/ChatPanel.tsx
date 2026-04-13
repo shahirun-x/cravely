@@ -180,12 +180,12 @@ export default function ChatPanel({ onRestaurantClick }: ChatPanelProps) {
         };
 
         setMessages((prev) => [...prev, botMsg]);
-      } catch {
+      } catch (error: any) {
+        console.error("Chat request failed:", error);
         const errorMsg: ChatMessage = {
           id: crypto.randomUUID(),
           role: "assistant",
-          content:
-            "Sorry, I had trouble processing that. Could you try again?",
+          content: `Error: ${error?.message || "Unknown error occurred"}`,
           restaurants: [],
           timestamp: new Date(),
         };

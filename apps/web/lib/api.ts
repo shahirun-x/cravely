@@ -5,14 +5,18 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 export async function sendChatMessage(
   message: string,
   sessionId: string,
-  city = "Chennai"
+  city = "Chennai",
+  userId = "anonymous"
 ): Promise<AgentResponse> {
+  console.log('API URL:', process.env.NEXT_PUBLIC_API_URL);
+  
   const res = await fetch(`${API_BASE}/api/v1/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       message,
       session_id: sessionId,
+      user_id: userId,
       channel: "web",
       city,
     }),
