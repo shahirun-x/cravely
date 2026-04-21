@@ -18,6 +18,7 @@ from google import genai
 
 from app.agent.nodes import set_gemini_client as set_nodes_client
 from app.db.connection import open_pool, close_pool
+from app.middleware.logging import RequestLoggingMiddleware
 from app.routes.chat import router as chat_router
 from app.tools.search import set_gemini_client as set_tools_client
 
@@ -60,6 +61,11 @@ app = FastAPI(
     docs_url=None,
     redoc_url=None,
 )
+
+# ---------------------------------------------------------------------------
+# Request logging (register before rate limiting so all requests are logged)
+# ---------------------------------------------------------------------------
+app.add_middleware(RequestLoggingMiddleware)
 
 # ---------------------------------------------------------------------------
 # Rate limiting
@@ -133,4 +139,4 @@ app.include_router(admin_router, tags=["admin"])
 
 @app.get("/health")
 async def health_check():
-    return {"status": "ok", "service": "cravely-api"}
+    return {"status": "ok"}

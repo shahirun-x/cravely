@@ -9,9 +9,10 @@ import re
 import uuid
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import UUID4, BaseModel, Field, field_validator
 from main import limiter
+from app.dependencies.auth import verify_supabase_token
 
 from app.agent.graph import agent
 from app.db.connection import get_db
@@ -133,7 +134,11 @@ async def _log_conversation(
 # ---------------------------------------------------------------------------
 @router.post("/chat", response_model=AgentResponse)
 @limiter.limit("20/minute")
-async def chat(http_request: Request, request: ValidatedChatRequest) -> AgentResponse:
+async def chat(
+    http_request: Request,
+    request: ValidatedChatRequest,
+    _user_id: str = Depends(verify_supabase_token),
+) -> AgentResponse:
     """Main chat endpoint. Sends user message through the LangGraph agent."""
     # --- Request size guard ---
     content_length = http_request.headers.get("content-length")

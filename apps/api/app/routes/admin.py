@@ -8,10 +8,11 @@ import logging
 import os
 
 import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
 from app.db.connection import get_db
+from app.dependencies.auth import verify_supabase_token
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +21,22 @@ router = APIRouter()
 TEXT_SEARCH_URL = "https://maps.googleapis.com/maps/api/place/textsearch/json"
 PLACE_DETAILS_URL = "https://maps.googleapis.com/maps/api/place/details/json"
 SLEEP_BETWEEN_REQUESTS = 0.3
+
+
+def _require_admin_secret(request: Request, x_admin_secret: str = Header(...)) -> None:
+    """
+    Secondary guard on top of JWT auth. Caller must supply the X-Admin-Secret
+    header matching the ADMIN_SECRET env var.
+    """
+    expected = os.getenv("ADMIN_SECRET")
+    if not expected:
+        logger.error("ADMIN_SECRET env var is not configured")
+        raise HTTPException(status_code=500, detail="Something went wrong")
+
+    if x_admin_secret != expected:
+        ip = request.client.host if request.client else "unknown"
+        logger.warning("Admin secret mismatch from IP %s", ip)
+        raise HTTPException(status_code=403, detail="Forbidden")
 
 
 async def _find_place_id(client: httpx.AsyncClient, api_key: str, name: str) -> str | None:
@@ -68,7 +85,11 @@ async def _fetch_opening_hours(client: httpx.AsyncClient, api_key: str, place_id
 
 
 @router.get("/api/v1/admin/sync-hours")
-async def sync_hours(update_all: bool = False):
+async def sync_hours(
+    update_all: bool = False,
+    _user_id: str = Depends(verify_supabase_token),
+    _admin: None = Depends(_require_admin_secret),
+):
     """
     Fetch opening hours from Google Places for all restaurants missing them,
     then update the opening_hours column. Streams progress as newline-delimited text.
@@ -78,11 +99,11 @@ async def sync_hours(update_all: bool = False):
     """
     api_key = os.getenv("GOOGLE_PLACES_API_KEY")
     if not api_key:
-        raise HTTPException(status_code=500, detail="GOOGLE_PLACES_API_KEY not configured")
+        logger.error("GOOGLE_PLACES_API_KEY is not configured")
+        raise HTTPException(status_code=500, detail="Something went wrong")
 
     async def stream():
         async with get_db() as conn:
-            # Ensure column exists
             await conn.execute("""
                 ALTER TABLE restaurants
                 ADD COLUMN IF NOT EXISTS opening_hours JSONB;
@@ -146,10 +167,10 @@ async def sync_hours(update_all: bool = False):
                         updated += 1
 
                     except Exception as exc:
-                        yield f"{prefix} ✗ error: {exc}\n"
+                        logger.exception("Error syncing hours for %s: %s", name, exc)
+                        yield f"{prefix} ✗ error (see server logs)\n"
                         errors += 1
 
-                    # Brief extra pause every 20 requests
                     if i % 20 == 0 and i < total:
                         yield f"\n  [..] Pausing 2s after {i} requests...\n\n"
                         await asyncio.sleep(2)
