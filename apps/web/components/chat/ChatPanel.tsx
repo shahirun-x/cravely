@@ -5,6 +5,9 @@ import ReactMarkdown from "react-markdown";
 import { sendChatMessage } from "@/lib/api";
 import { createClient } from "@/lib/supabase/client";
 import type { ChatMessage, RestaurantResult } from "@/lib/types";
+
+// Stable singleton — avoids a fresh unauthenticated client on every sendMessage call
+const supabase = createClient();
 import RestaurantCard from "@/components/chat/RestaurantCard";
 import { ArrowUp } from "lucide-react";
 
@@ -75,8 +78,14 @@ export default function ChatPanel({ onRestaurantClick, onRestaurantsUpdate }: Ch
       setLoading(true);
 
       try {
-        const { data: { session } } = await createClient().auth.getSession();
+        const { data: { session } } = await supabase.auth.getSession();
         const authToken = session?.access_token;
+        if (process.env.NODE_ENV === "development") {
+          console.log("[ChatPanel] authToken present:", authToken != null);
+        }
+        if (!authToken) {
+          throw new Error("Not authenticated");
+        }
         const response = await sendChatMessage(text.trim(), sessionId, "Chennai", authToken);
 
         const botMsg: ChatMessage = {

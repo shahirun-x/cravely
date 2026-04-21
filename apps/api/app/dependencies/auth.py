@@ -28,6 +28,7 @@ def verify_supabase_token(authorization: str = Header(...)) -> str:
     Raises HTTP 401 for any failure — reason is never disclosed to the caller.
     """
     if not authorization.startswith("Bearer "):
+        logger.warning("Auth failed: Authorization header missing or not Bearer (got: %.20r)", authorization)
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     token = authorization[len("Bearer "):]
@@ -40,13 +41,13 @@ def verify_supabase_token(authorization: str = Header(...)) -> str:
             options={"verify_aud": False},  # Supabase does not always set aud
         )
     except ExpiredSignatureError:
-        logger.debug("JWT validation failed: token expired")
+        logger.warning("Auth failed: token expired")
         raise HTTPException(status_code=401, detail="Unauthorized")
     except JWTError as exc:
-        logger.debug("JWT validation failed: %s", exc)
+        logger.warning("Auth failed: %s: %s", type(exc).__name__, exc)
         raise HTTPException(status_code=401, detail="Unauthorized")
     except Exception as exc:
-        logger.warning("Unexpected error during JWT validation: %s", exc)
+        logger.warning("Auth failed (unexpected): %s: %s", type(exc).__name__, exc)
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     user_id: str | None = payload.get("sub")
