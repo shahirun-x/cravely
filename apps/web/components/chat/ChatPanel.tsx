@@ -23,7 +23,6 @@ const SUGGESTIONS = [
 const MOBILE_NAV_HEIGHT = 56;
 
 export default function ChatPanel({ onRestaurantClick, onRestaurantsUpdate }: ChatPanelProps) {
-  console.log('user:', 'none', 'session:', typeof window !== 'undefined' ? sessionStorage.getItem("cravely-session-id") : 'server');
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -89,11 +88,19 @@ export default function ChatPanel({ onRestaurantClick, onRestaurantsUpdate }: Ch
         if (onRestaurantsUpdate && response.restaurants) {
           onRestaurantsUpdate(response.restaurants);
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
+        if (process.env.NODE_ENV === "development") {
+          console.error("[ChatPanel] sendMessage error:", error);
+        }
+        // Surface a timeout hint to the user, generic message otherwise
+        const isTimeout =
+          error instanceof Error && error.message.includes("timed out");
         const errorMsg: ChatMessage = {
           id: crypto.randomUUID(),
           role: "assistant",
-          content: `Error: ${error?.message || "Unknown error occurred"}`,
+          content: isTimeout
+            ? "Request timed out. Try again."
+            : "Something went wrong. Please try again.",
           restaurants: [],
           timestamp: new Date(),
         };

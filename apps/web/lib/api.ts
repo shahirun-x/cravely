@@ -1,6 +1,29 @@
 import type { AgentResponse, RestaurantResult, SearchParams } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const TIMEOUT_MS = 10_000;
+
+function createTimeoutSignal(): AbortSignal {
+  return AbortSignal.timeout(TIMEOUT_MS);
+}
+
+function logError(context: string, error: unknown): void {
+  if (process.env.NODE_ENV === "development") {
+    console.error(`[api] ${context}:`, error);
+  }
+}
+
+async function apiFetch(input: string, init?: RequestInit): Promise<Response> {
+  const signal = createTimeoutSignal();
+  try {
+    return await fetch(input, { ...init, signal });
+  } catch (err: unknown) {
+    if (err instanceof Error && err.name === "TimeoutError") {
+      throw new Error("Request timed out. Try again.");
+    }
+    throw err;
+  }
+}
 
 export async function sendChatMessage(
   message: string,
@@ -8,24 +31,30 @@ export async function sendChatMessage(
   city = "Chennai",
   userId?: string
 ): Promise<AgentResponse> {
-  console.log('API URL:', process.env.NEXT_PUBLIC_API_URL);
-  
   const actualUserId = userId || crypto.randomUUID();
 
-  const res = await fetch(`${API_BASE}/api/v1/chat`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      message,
-      session_id: sessionId,
-      user_id: actualUserId,
-      channel: "web",
-      city,
-    }),
-  });
+  let res: Response;
+  try {
+    res = await apiFetch(`${API_BASE}/api/v1/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message,
+        session_id: sessionId,
+        user_id: actualUserId,
+        channel: "web",
+        city,
+      }),
+    });
+  } catch (err) {
+    logError("sendChatMessage fetch", err);
+    throw err;
+  }
 
   if (!res.ok) {
-    throw new Error(`Chat request failed: ${res.status}`);
+    const error = new Error(`Chat request failed: ${res.status}`);
+    logError("sendChatMessage response", error);
+    throw error;
   }
 
   return res.json();
@@ -41,10 +70,18 @@ export async function searchRestaurants(
   if (params.is_veg) query.set("is_veg", "true");
   if (params.query) query.set("query", params.query);
 
-  const res = await fetch(`${API_BASE}/api/v1/search?${query.toString()}`);
+  let res: Response;
+  try {
+    res = await apiFetch(`${API_BASE}/api/v1/search?${query.toString()}`);
+  } catch (err) {
+    logError("searchRestaurants fetch", err);
+    throw err;
+  }
 
   if (!res.ok) {
-    throw new Error(`Search request failed: ${res.status}`);
+    const error = new Error(`Search request failed: ${res.status}`);
+    logError("searchRestaurants response", error);
+    throw error;
   }
 
   return res.json();
@@ -53,10 +90,18 @@ export async function searchRestaurants(
 export async function getRestaurantDetail(
   id: string
 ): Promise<RestaurantResult> {
-  const res = await fetch(`${API_BASE}/api/v1/restaurants/${id}`);
+  let res: Response;
+  try {
+    res = await apiFetch(`${API_BASE}/api/v1/restaurants/${id}`);
+  } catch (err) {
+    logError("getRestaurantDetail fetch", err);
+    throw err;
+  }
 
   if (!res.ok) {
-    throw new Error(`Restaurant detail request failed: ${res.status}`);
+    const error = new Error(`Restaurant detail request failed: ${res.status}`);
+    logError("getRestaurantDetail response", error);
+    throw error;
   }
 
   return res.json();
