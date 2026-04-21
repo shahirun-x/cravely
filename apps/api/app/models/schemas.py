@@ -23,6 +23,8 @@ class RestaurantResult(BaseModel):
     top_dishes: List[str] = Field(default_factory=list)
     zomato_url: Optional[str] = None
     swiggy_url: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
 
 
 class MenuItemResult(BaseModel):

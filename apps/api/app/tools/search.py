@@ -68,6 +68,7 @@ async def semantic_search(
         SELECT
             r.id, r.name, r.description, r.address,
             r.avg_rating, r.price_range, r.is_pure_veg, r.timings,
+            r.latitude, r.longitude,
             r.zomato_url, r.swiggy_url,
             n.name AS neighborhood,
             1 - (r.embedding <=> $1::vector) AS similarity,
@@ -153,6 +154,7 @@ async def filter_search(
         SELECT
             r.id, r.name, r.description, r.address,
             r.avg_rating, r.price_range, r.is_pure_veg, r.timings,
+            r.latitude, r.longitude,
             r.zomato_url, r.swiggy_url,
             n.name AS neighborhood,
             COALESCE(
@@ -198,6 +200,7 @@ async def get_restaurant_detail(conn, restaurant_id: str) -> dict | None:
         SELECT
             r.id, r.name, r.description, r.address,
             r.avg_rating, r.price_range, r.is_pure_veg, r.timings,
+            r.latitude, r.longitude,
             r.phone, r.zomato_url, r.swiggy_url,
             n.name AS neighborhood,
             COALESCE(

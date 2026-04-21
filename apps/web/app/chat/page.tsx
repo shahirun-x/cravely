@@ -60,11 +60,12 @@ export default function ChatPage() {
             <SearchPanel
               onAskCravely={handleAskCravely}
               onRestaurantClick={handleRestaurantClick}
+              onRestaurantsUpdate={setCurrentRestaurants}
             />
           )}
           {activeView === "map" && (
             <MapPanel
-              restaurants={[]}
+              restaurants={currentRestaurants}
               onAskCravely={handleAskCravely}
             />
           )}

@@ -27,6 +27,7 @@ const CUISINES = [
 interface SearchPanelProps {
   onAskCravely: (name: string) => void;
   onRestaurantClick?: (restaurant: RestaurantResult) => void;
+  onRestaurantsUpdate?: (restaurants: RestaurantResult[]) => void;
 }
 
 function CustomCheckbox({
@@ -107,6 +108,7 @@ function SkeletonCard() {
 export default function SearchPanel({
   onAskCravely,
   onRestaurantClick,
+  onRestaurantsUpdate,
 }: SearchPanelProps) {
   const [neighborhood, setNeighborhood] = useState<string | null>(null);
   const [cuisine, setCuisine] = useState<string | null>(null);
@@ -132,6 +134,9 @@ export default function SearchPanel({
       if (res.ok) {
         const data = await res.json();
         setResults(data || []);
+        if (onRestaurantsUpdate) {
+          onRestaurantsUpdate(data || []);
+        }
       }
     } catch {
       setResults([]);

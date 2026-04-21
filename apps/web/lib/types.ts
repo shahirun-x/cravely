@@ -16,6 +16,8 @@ export interface RestaurantResult {
   swiggy_url?: string | null;
   menu_items?: MenuItem[];
   phone?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 export interface MenuItem {

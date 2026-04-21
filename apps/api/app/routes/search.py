@@ -41,6 +41,8 @@ async def search_endpoint(
                     top_dishes=r.get("top_dishes", []),
                     zomato_url=r.get("zomato_url"),
                     swiggy_url=r.get("swiggy_url"),
+                    latitude=r.get("latitude"),
+                    longitude=r.get("longitude"),
                 ))
             except Exception:
                 pass
