@@ -226,29 +226,18 @@ export default function ChatPanel({ onRestaurantClick, onRestaurantsUpdate }: Ch
           ))
         )}
 
-        {/* Loading indicator — animated dots only, no text */}
+        {/* Typing indicator */}
         {loading && (
           <div className="flex justify-start">
-            <div
-              className="px-4 py-3 flex items-center gap-1.5"
-              style={{
-                backgroundColor: "var(--bg-card)",
-                border: "1px solid var(--border)",
-                borderRadius: "var(--radius-lg) var(--radius-lg) var(--radius-lg) 4px",
-              }}
+            <div className="flex gap-2 items-center p-3 bg-[#1A1A1A] rounded-lg w-fit"
+              style={{ borderRadius: "var(--radius-lg) var(--radius-lg) var(--radius-lg) 4px" }}
             >
-              <span
-                className="w-2 h-2 rounded-full dot-animate-1"
-                style={{ backgroundColor: "var(--accent)" }}
-              />
-              <span
-                className="w-2 h-2 rounded-full dot-animate-2"
-                style={{ backgroundColor: "var(--accent)" }}
-              />
-              <span
-                className="w-2 h-2 rounded-full dot-animate-3"
-                style={{ backgroundColor: "var(--accent)" }}
-              />
+              <span className="text-[#888888] text-xs font-semibold tracking-wider">CRAVELY</span>
+              <div className="flex gap-1">
+                <span className="w-2 h-2 bg-[#FF6B35] rounded-full animate-bounce" style={{animationDelay: '0ms'}}/>
+                <span className="w-2 h-2 bg-[#FF6B35] rounded-full animate-bounce" style={{animationDelay: '150ms'}}/>
+                <span className="w-2 h-2 bg-[#FF6B35] rounded-full animate-bounce" style={{animationDelay: '300ms'}}/>
+              </div>
             </div>
           </div>
         )}
