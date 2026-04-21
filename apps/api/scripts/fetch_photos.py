@@ -1,104 +1,145 @@
 """
-Fetch Google Places photos for all restaurants and populate photo_url.
+Fetch Unsplash food photos for restaurants based on cuisine type.
 
 Prerequisites:
-  1. Run apps/api/db/add_photo_url.sql in the Supabase SQL editor.
-  2. Set env vars:
-       SUPABASE_URL
-       SUPABASE_SERVICE_ROLE_KEY   (needs UPDATE on restaurants)
-       GOOGLE_PLACES_API_KEY
+  1. Sign up at unsplash.com/developers, create an app, get Access Key.
+  2. Add to apps/api/.env:
+       SUPABASE_URL=https://...
+       SUPABASE_ANON_KEY=...
+       UNSPLASH_ACCESS_KEY=...
 
 Usage:
   cd apps/api
-  python scripts/fetch_photos.py
+  python scripts/fetch_photos.py           # all restaurants without a photo
+  python scripts/fetch_photos.py --debug   # first 5 only, verbose
+  python scripts/fetch_photos.py --all     # overwrite existing photos too
 """
 
 import os
+import sys
 import time
+import json
+import random
 import requests
-from supabase import create_client
 
-SUPABASE_URL = os.environ["SUPABASE_URL"]
-SUPABASE_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
-GOOGLE_KEY = os.environ["GOOGLE_PLACES_API_KEY"]
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
-PLACES_DETAILS = "https://maps.googleapis.com/maps/api/place/details/json"
-PLACES_TEXTSEARCH = "https://maps.googleapis.com/maps/api/place/textsearch/json"
-PLACES_PHOTO = "https://maps.googleapis.com/maps/api/place/photo"
+DEBUG = "--debug" in sys.argv
+OVERWRITE = "--all" in sys.argv
 
-supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+SUPABASE_URL = os.environ["SUPABASE_URL"].rstrip("/")
+SUPABASE_ANON_KEY = os.environ["SUPABASE_ANON_KEY"]
+UNSPLASH_ACCESS_KEY = os.environ["UNSPLASH_ACCESS_KEY"]
+
+HEADERS = {
+    "apikey": SUPABASE_ANON_KEY,
+    "Authorization": f"Bearer {SUPABASE_ANON_KEY}",
+}
+
+CUISINE_QUERIES = {
+    "South Indian": "dosa idli south indian food",
+    "North Indian": "indian curry butter chicken food",
+    "Chinese": "chinese noodles fried rice food",
+    "Italian": "pizza pasta italian food",
+    "Fast Food": "burger fries fast food",
+    "Biryani": "biryani indian rice food",
+    "Seafood": "seafood fish curry food",
+    "Cafe": "coffee cafe food",
+    "Bakery": "bakery pastry bread food",
+    "Street Food": "indian street food",
+    "BBQ": "bbq grilled meat food",
+    "Desserts": "indian sweets dessert",
+    "default": "indian restaurant food",
+}
 
 
-def photo_url_from_ref(ref: str) -> str:
-    return (
-        f"{PLACES_PHOTO}?maxwidth=800"
-        f"&photo_reference={ref}"
-        f"&key={GOOGLE_KEY}"
-    )
-
-
-def fetch_photo_ref_for_place(place_id: str) -> str | None:
+def get_cuisine_for_restaurant(restaurant_id: str) -> str:
     resp = requests.get(
-        PLACES_DETAILS,
-        params={"place_id": place_id, "fields": "photos", "key": GOOGLE_KEY},
+        f"{SUPABASE_URL}/rest/v1/restaurant_cuisines",
+        headers=HEADERS,
+        params={
+            "restaurant_id": f"eq.{restaurant_id}",
+            "select": "cuisines(name)",
+            "limit": "1",
+        },
         timeout=10,
     )
     data = resp.json()
-    photos = data.get("result", {}).get("photos", [])
-    if photos:
-        return photos[0]["photo_reference"]
-    return None
+    if data and data[0].get("cuisines"):
+        return data[0]["cuisines"]["name"]
+    return "default"
 
 
-def search_place_id(name: str) -> str | None:
+def fetch_unsplash_photo(query: str) -> str | None:
     resp = requests.get(
-        PLACES_TEXTSEARCH,
-        params={"query": f"{name} Chennai", "key": GOOGLE_KEY},
+        "https://api.unsplash.com/search/photos",
+        headers={"Authorization": f"Client-ID {UNSPLASH_ACCESS_KEY}"},
+        params={"query": query, "per_page": 5, "orientation": "landscape"},
         timeout=10,
     )
-    results = resp.json().get("results", [])
-    if results:
-        return results[0]["place_id"]
-    return None
+    data = resp.json()
+    if DEBUG:
+        print(f"  Unsplash query: {query}")
+        print(f"  Results: {len(data.get('results', []))}")
+    results = data.get("results", [])
+    if not results:
+        return None
+    photo = random.choice(results)
+    return photo["urls"]["regular"]
 
 
 def main():
-    response = supabase.from_("restaurants").select("id, name, google_place_id").execute()
-    restaurants = response.data or []
-    print(f"Processing {len(restaurants)} restaurants…\n")
+    resp = requests.get(
+        f"{SUPABASE_URL}/rest/v1/restaurants",
+        headers=HEADERS,
+        params={"select": "id,name,photo_url", "limit": "1000"},
+        timeout=15,
+    )
+    resp.raise_for_status()
+    restaurants = resp.json()
 
-    for r in restaurants:
-        rid = r["id"]
+    if OVERWRITE:
+        to_process = restaurants
+    else:
+        to_process = [r for r in restaurants if not r.get("photo_url")]
+
+    if DEBUG:
+        to_process = to_process[:5]
+        print(f"[DEBUG] Testing first {len(to_process)} restaurants\n")
+    else:
+        print(f"Found {len(to_process)} restaurants without photos\n")
+
+    for r in to_process:
         name = r["name"]
-        place_id = r.get("google_place_id") or None
-
         try:
-            # Resolve place_id if missing
-            if not place_id:
-                place_id = search_place_id(name)
-                if not place_id:
-                    print(f"Failed: {name} — could not find place_id")
-                    time.sleep(0.2)
-                    continue
-                supabase.from_("restaurants").update(
-                    {"google_place_id": place_id}
-                ).eq("id", rid).execute()
+            cuisine = get_cuisine_for_restaurant(r["id"])
+            query = CUISINE_QUERIES.get(cuisine, CUISINE_QUERIES["default"])
 
-            # Fetch photo reference
-            ref = fetch_photo_ref_for_place(place_id)
-            if not ref:
-                print(f"Failed: {name} — no photos returned")
-                time.sleep(0.2)
+            if DEBUG:
+                print(f"{name} (cuisine: {cuisine})")
+
+            photo_url = fetch_unsplash_photo(query)
+            if not photo_url:
+                print(f"Failed: {name} — no photos found on Unsplash")
                 continue
 
-            url = photo_url_from_ref(ref)
-            supabase.from_("restaurants").update({"photo_url": url}).eq("id", rid).execute()
-            print(f"Updated: {name} → {url[:80]}…")
+            requests.patch(
+                f"{SUPABASE_URL}/rest/v1/restaurants",
+                headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=minimal"},
+                params={"id": f"eq.{r['id']}"},
+                data=json.dumps({"photo_url": photo_url}),
+                timeout=15,
+            ).raise_for_status()
 
-        except Exception as exc:
-            print(f"Failed: {name} — {exc}")
+            print(f"Updated: {name} → {cuisine}")
+            time.sleep(0.05)
 
-        time.sleep(0.2)
+        except Exception as e:
+            print(f"Failed: {name} — {e}")
 
     print("\nDone.")
 
