@@ -51,21 +51,32 @@ def _get_redis() -> Redis | None:
     return _redis
 
 
+import groq
 from groq import Groq
 
-client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+client = Groq(api_key=os.environ.get("GROQ_API_KEY"), max_retries=2)
 
 def _call_llm(prompt: str, system: str = "", max_tokens: int = 1000, temperature: float = 0.7) -> str:
-    response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
-        messages=[
-            {"role": "system", "content": system},
-            {"role": "user", "content": prompt}
-        ],
-        max_tokens=max_tokens,
-        temperature=temperature,
-    )
-    return response.choices[0].message.content
+    delays = [2, 4, 8]
+    last_exc: Exception | None = None
+    for attempt, delay in enumerate(delays, 1):
+        try:
+            response = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=max_tokens,
+                temperature=temperature,
+            )
+            return response.choices[0].message.content
+        except groq.RateLimitError as e:
+            last_exc = e
+            if attempt < len(delays):
+                logger.warning("Groq rate limit hit (attempt %d), retrying in %ds", attempt, delay)
+                time.sleep(delay)
+    raise last_exc
 
 
 # ── Conversation history helpers ──
@@ -125,7 +136,7 @@ async def intent_classifier_node(state: AgentState) -> dict[str, Any]:
     try:
         raw = _call_llm(user_input, INTENT_CLASSIFIER_PROMPT)
 
-        # Strip markdown code blocks if Gemini wraps the JSON
+        # Strip markdown code blocks if Groq wraps the JSON
         if raw.startswith("```"):
             raw = raw.split("\n", 1)[1] if "\n" in raw else raw[3:]
             if raw.endswith("```"):
@@ -133,6 +144,15 @@ async def intent_classifier_node(state: AgentState) -> dict[str, Any]:
             raw = raw.strip()
 
         parsed = json.loads(raw)
+    except groq.RateLimitError:
+        logger.warning("Groq rate limit hit, using fallback")
+        return {
+            "session_id": session_id,
+            "intent": "semantic_search",
+            "extracted_params": {"query_text": state["message"]},
+            "conversation_history": history,
+            "final_response": "",
+        }
     except Exception as e:
         logger.error("Intent classification failed: %s", type(e).__name__)
         parsed = {
@@ -323,6 +343,13 @@ async def response_formatter_node(state: AgentState) -> dict[str, Any]:
             RESPONSE_FORMATTER_PROMPT,
             max_tokens=300,
             temperature=0.7,
+        )
+    except groq.RateLimitError:
+        logger.warning("Groq rate limit hit in response formatter, using fallback")
+        response_text = (
+            "Here's what I found for you."
+            if tool_results
+            else "I couldn't find anything matching that. Try asking differently or explore a different area of Chennai."
         )
     except Exception as e:
         logger.error("Response formatting error: %s", type(e).__name__)
