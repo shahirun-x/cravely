@@ -57,7 +57,7 @@ from groq import Groq
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"), max_retries=2)
 
 def _call_llm(prompt: str, system: str = "", max_tokens: int = 1000, temperature: float = 0.7) -> str:
-    delays = [2, 4, 8]
+    delays = [1, 2]
     last_exc: Exception | None = None
     for attempt, delay in enumerate(delays, 1):
         try:

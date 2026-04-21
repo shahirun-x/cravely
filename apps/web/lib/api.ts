@@ -1,7 +1,7 @@
 import type { AgentResponse, RestaurantResult, SearchParams } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-const TIMEOUT_MS = 10_000;
+const TIMEOUT_MS = 25_000;
 
 function createTimeoutSignal(): AbortSignal {
   return AbortSignal.timeout(TIMEOUT_MS);
@@ -19,7 +19,7 @@ async function apiFetch(input: string, init?: RequestInit): Promise<Response> {
     return await fetch(input, { ...init, signal });
   } catch (err: unknown) {
     if (err instanceof Error && err.name === "TimeoutError") {
-      throw new Error("Request timed out. Try again.");
+      throw new Error("Taking longer than usual. Please try again.");
     }
     throw err;
   }
