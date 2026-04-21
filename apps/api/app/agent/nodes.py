@@ -51,31 +51,21 @@ def _get_redis() -> Redis | None:
     return _redis
 
 
-# ── Gemini helper ──
+from groq import Groq
 
-def _call_gemini(system_prompt: str, user_message: str) -> str:
-    """Call Gemini 1.5 Flash via the new google-genai SDK and return the text.
-    Retries once on 429 rate-limit errors after a 4-second backoff.
-    """
-    if _gemini_client is None:
-        raise RuntimeError("Gemini client not initialized. Call set_gemini_client() first.")
+client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
-    for attempt in range(2):
-        try:
-            response = _gemini_client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=user_message,
-                config=genai.types.GenerateContentConfig(
-                    system_instruction=system_prompt,
-                ),
-            )
-            return response.text.strip()
-        except Exception as e:
-            if "429" in str(e) and attempt == 0:
-                logger.warning(f"Gemini 429 rate limit hit, retrying in 4s...")
-                time.sleep(4)
-                continue
-            raise
+def _call_llm(prompt: str, system: str = "") -> str:
+    response = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[
+            {"role": "system", "content": system},
+            {"role": "user", "content": prompt}
+        ],
+        max_tokens=1000,
+        temperature=0.7
+    )
+    return response.choices[0].message.content
 
 
 # ── Conversation history helpers ──
@@ -133,7 +123,7 @@ async def intent_classifier_node(state: AgentState) -> dict[str, Any]:
     user_input = f"{history_text}\nCurrent user message: {state['message']}"
 
     try:
-        raw = _call_gemini(INTENT_CLASSIFIER_PROMPT, user_input)
+        raw = _call_llm(user_input, INTENT_CLASSIFIER_PROMPT)
 
         # Strip markdown code blocks if Gemini wraps the JSON
         if raw.startswith("```"):
@@ -300,7 +290,7 @@ async def response_formatter_node(state: AgentState) -> dict[str, Any]:
         if intent == "chitchat":
             # Generate chitchat response
             user_input = f"Channel: {channel}\n\nUser message: {state['message']}"
-            response_text = _call_gemini(RESPONSE_FORMATTER_PROMPT, user_input)
+            response_text = _call_llm(user_input, RESPONSE_FORMATTER_PROMPT)
         else:
             response_text = state["final_response"]
 
@@ -323,7 +313,7 @@ async def response_formatter_node(state: AgentState) -> dict[str, Any]:
     )
 
     try:
-        response_text = _call_gemini(RESPONSE_FORMATTER_PROMPT, user_input)
+        response_text = _call_llm(user_input, RESPONSE_FORMATTER_PROMPT)
     except Exception as e:
         logger.error(f"Response formatting error: {e}")
         response_text = "I had a little trouble finding that. Could you try rephrasing your request?"

@@ -8,3 +8,4 @@ upstash-redis
 python-dotenv
 pydantic
 psycopg[binary]
+groq
