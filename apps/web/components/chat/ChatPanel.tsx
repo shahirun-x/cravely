@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import { sendChatMessage } from "@/lib/api";
+import { createClient } from "@/lib/supabase/client";
 import type { ChatMessage, RestaurantResult } from "@/lib/types";
 import RestaurantCard from "@/components/chat/RestaurantCard";
 import { ArrowUp } from "lucide-react";
@@ -74,7 +75,9 @@ export default function ChatPanel({ onRestaurantClick, onRestaurantsUpdate }: Ch
       setLoading(true);
 
       try {
-        const response = await sendChatMessage(text.trim(), sessionId);
+        const { data: { session } } = await createClient().auth.getSession();
+        const authToken = session?.access_token;
+        const response = await sendChatMessage(text.trim(), sessionId, "Chennai", authToken);
 
         const botMsg: ChatMessage = {
           id: crypto.randomUUID(),

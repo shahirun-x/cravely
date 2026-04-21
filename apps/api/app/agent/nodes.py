@@ -82,7 +82,7 @@ def _get_conversation_history(session_id: str, count: int = 6) -> list[dict]:
             return []
         return [json.loads(m) if isinstance(m, str) else m for m in messages]
     except Exception as e:
-        logger.warning(f"Redis read error: {e}")
+        logger.warning("Redis read error: %s", type(e).__name__)
         return []
 
 
@@ -98,7 +98,7 @@ def _save_message(session_id: str, role: str, content: str) -> None:
         redis.ltrim(key, -10, -1)  # keep last 10 messages
         redis.expire(key, 86400)   # 24h TTL
     except Exception as e:
-        logger.warning(f"Redis write error: {e}")
+        logger.warning("Redis write error: %s", type(e).__name__)
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -133,8 +133,8 @@ async def intent_classifier_node(state: AgentState) -> dict[str, Any]:
             raw = raw.strip()
 
         parsed = json.loads(raw)
-    except (json.JSONDecodeError, Exception) as e:
-        logger.error(f"Intent classification failed: {e}")
+    except Exception as e:
+        logger.error("Intent classification failed: %s", type(e).__name__)
         parsed = {
             "intent": "unclear",
             "extracted_params": {"query_text": state["message"]},
@@ -246,7 +246,7 @@ async def executor_node(state: AgentState) -> dict[str, Any]:
                 # Fallback: if filter_search returned 0 results, try semantic_search
                 if not tool_results:
                     query_text = params.get("query_text") or params.get("item_name") or state["message"]
-                    logger.info(f"filter_search returned 0 results, falling back to semantic_search: {query_text}")
+                    logger.info("filter_search returned 0 results, falling back to semantic_search")
                     tool_results = await semantic_search(conn, query_text, city=city)
 
             elif tool_used == "get_restaurant_detail":
@@ -269,7 +269,7 @@ async def executor_node(state: AgentState) -> dict[str, Any]:
                     tool_results = [{"success": False, "error": "Missing user_id or restaurant_id"}]
 
     except Exception as e:
-        logger.error(f"Tool execution error: {e}")
+        logger.error("Tool execution error: %s", type(e).__name__)
         tool_results = []
 
     # Save user message to Redis
@@ -319,7 +319,7 @@ async def response_formatter_node(state: AgentState) -> dict[str, Any]:
     try:
         response_text = _call_llm(user_input, RESPONSE_FORMATTER_PROMPT)
     except Exception as e:
-        logger.error(f"Response formatting error: {e}")
+        logger.error("Response formatting error: %s", type(e).__name__)
         response_text = "I had a little trouble finding that. Could you try rephrasing your request?"
 
     # Save assistant response to Redis

@@ -11,10 +11,16 @@ out/
 dist/
 build/
 
-# Environment
+# Environment — never commit real credentials
 .env
 .env.local
+.env.production
+.env.staging
 .env.*.local
+*.pem
+*.key
+*.p12
+*.pfx
 
 # Python
 __pycache__/

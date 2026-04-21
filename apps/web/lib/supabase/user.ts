@@ -19,8 +19,10 @@ export async function createUserProfile(
   );
 
   if (error) {
-    console.error("Failed to create user profile:", error.message);
-    throw error;
+    if (process.env.NODE_ENV === "development") {
+      console.error("Failed to create user profile:", error.message);
+    }
+    throw new Error("Failed to create user profile");
   }
 }
 
@@ -67,7 +69,9 @@ export async function saveUserPreferences(
   );
 
   if (error) {
-    console.error("Failed to save user preferences:", error.message);
-    throw error;
+    if (process.env.NODE_ENV === "development") {
+      console.error("Failed to save user preferences:", error.message);
+    }
+    throw new Error("Failed to save user preferences");
   }
 }

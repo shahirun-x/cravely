@@ -29,19 +29,22 @@ export async function sendChatMessage(
   message: string,
   sessionId: string,
   city = "Chennai",
-  userId?: string
+  authToken?: string,
 ): Promise<AgentResponse> {
-  const actualUserId = userId || crypto.randomUUID();
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (authToken) {
+    headers["Authorization"] = `Bearer ${authToken}`;
+  }
 
   let res: Response;
   try {
     res = await apiFetch(`${API_BASE}/api/v1/chat`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({
         message,
         session_id: sessionId,
-        user_id: actualUserId,
+        // user_id intentionally omitted — backend derives identity from the JWT
         channel: "web",
         city,
       }),
