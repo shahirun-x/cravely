@@ -64,6 +64,8 @@ app.add_middleware(
 
 # Include routers
 app.include_router(chat_router, prefix="/api/v1", tags=["chat"])
+from app.routes.search import router as search_router
+app.include_router(search_router, tags=["search"])
 
 
 @app.get("/health")

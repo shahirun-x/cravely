@@ -4,22 +4,24 @@ import { useState } from "react";
 import { Star } from "lucide-react";
 import type { RestaurantResult } from "@/lib/types";
 
+import RestaurantCard from "@/components/chat/RestaurantCard";
+
 const NEIGHBORHOODS = [
-  "T. Nagar",
   "Adyar",
-  "Mylapore",
+  "T Nagar",
   "Anna Nagar",
   "OMR",
+  "Velachery",
   "Nungambakkam",
 ];
 const CUISINES = [
   "South Indian",
   "North Indian",
   "Chinese",
+  "Continental",
+  "Bakery & Cafe",
   "Chettinad",
-  "Biryani",
-  "Seafood",
-  "Italian",
+  "Street Food",
 ];
 
 interface SearchPanelProps {
@@ -72,112 +74,6 @@ function CustomCheckbox({
   );
 }
 
-function ResultCard({
-  restaurant,
-  onAsk,
-  onClick,
-}: {
-  restaurant: RestaurantResult;
-  onAsk: () => void;
-  onClick: () => void;
-}) {
-  const priceSymbol = restaurant.price_range
-    ? "₹".repeat(restaurant.price_range)
-    : "₹₹";
-
-  return (
-    <div
-      className="overflow-hidden transition-default"
-      style={{
-        backgroundColor: "var(--bg-card)",
-        border: "1px solid var(--border)",
-        borderRadius: "var(--radius-md)",
-      }}
-      onMouseEnter={(e) =>
-        (e.currentTarget.style.borderColor = "rgba(255, 107, 53, 0.3)")
-      }
-      onMouseLeave={(e) =>
-        (e.currentTarget.style.borderColor = "var(--border)")
-      }
-    >
-      {/* Photo placeholder — gradient */}
-      <div
-        className="h-32 cursor-pointer"
-        onClick={onClick}
-        style={{
-          background:
-            "linear-gradient(135deg, var(--bg-elevated) 0%, var(--bg-card) 100%)",
-        }}
-      />
-      <div className="p-4">
-        <div className="flex items-start justify-between gap-2">
-          <h3
-            className="font-semibold text-[15px] truncate cursor-pointer text-text-primary"
-            onClick={onClick}
-          >
-            {restaurant.name}
-          </h3>
-          <div className="flex items-center gap-1.5 shrink-0">
-            {restaurant.avg_rating && (
-              <span className="flex items-center gap-1 text-[13px] text-text-secondary">
-                <Star className="w-3.5 h-3.5 fill-star text-star" />
-                {restaurant.avg_rating}
-              </span>
-            )}
-            <span
-              className="w-2 h-2 rounded-full"
-              style={{
-                backgroundColor: restaurant.is_pure_veg
-                  ? "var(--veg)"
-                  : "var(--non-veg)",
-              }}
-            />
-          </div>
-        </div>
-
-        <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-          <span
-            className="text-[11px] px-2.5 py-1 text-text-muted"
-            style={{
-              backgroundColor: "var(--bg-elevated)",
-              borderRadius: "var(--radius-sm)",
-            }}
-          >
-            {restaurant.neighborhood}
-          </span>
-          <span className="text-[13px] text-text-muted">{priceSymbol}</span>
-        </div>
-
-        <div className="flex gap-1 mt-2 flex-wrap">
-          {restaurant.cuisines?.slice(0, 3).map((c) => (
-            <span
-              key={c}
-              className="text-[11px] px-2.5 py-1 text-text-muted"
-              style={{
-                backgroundColor: "var(--bg-elevated)",
-                borderRadius: "var(--radius-sm)",
-              }}
-            >
-              {c}
-            </span>
-          ))}
-        </div>
-
-        <button
-          onClick={onAsk}
-          className="mt-3 w-full py-2 text-xs font-medium cursor-pointer transition-default"
-          style={{
-            backgroundColor: "var(--accent-muted)",
-            color: "var(--accent)",
-            borderRadius: "var(--radius-sm)",
-          }}
-        >
-          Ask Cravely
-        </button>
-      </div>
-    </div>
-  );
-}
 
 function SkeletonCard() {
   return (
@@ -225,33 +121,17 @@ export default function SearchPanel({
     setSearched(true);
 
     try {
-      const parts: string[] = [];
-      if (vegOnly) parts.push("vegetarian");
-      if (priceRange === 1) parts.push("cheap");
-      if (priceRange === 3) parts.push("premium");
-      if (cuisine) parts.push(cuisine);
-      parts.push("restaurants");
-      if (neighborhood) parts.push(`in ${neighborhood}`);
-
-      const query = parts.join(" ") || "restaurants";
+      const searchParams = new URLSearchParams();
+      if (neighborhood) searchParams.append("neighborhood", neighborhood);
+      if (cuisine) searchParams.append("cuisine", cuisine);
 
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/v1/chat`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            message: query,
-            session_id: crypto.randomUUID(),
-            channel: "web",
-            city: "Chennai",
-          }),
-        }
+        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/search?${searchParams.toString()}`
       );
 
       if (res.ok) {
         const data = await res.json();
-        setResults(data.restaurants || []);
+        setResults(data || []);
       }
     } catch {
       setResults([]);
@@ -259,6 +139,8 @@ export default function SearchPanel({
       setLoading(false);
     }
   }
+
+  const filteredResults = vegOnly ? results.filter(r => r.is_pure_veg) : results;
 
   return (
     <div className="flex h-full bg-bg-primary">
@@ -381,13 +263,12 @@ export default function SearchPanel({
               <SkeletonCard key={i} />
             ))}
           </div>
-        ) : results.length > 0 ? (
+        ) : filteredResults.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {results.map((r) => (
-              <ResultCard
+            {filteredResults.map((r) => (
+              <RestaurantCard
                 key={r.id || r.name}
                 restaurant={r}
-                onAsk={() => onAskCravely(r.name)}
                 onClick={() => onRestaurantClick?.(r)}
               />
             ))}
