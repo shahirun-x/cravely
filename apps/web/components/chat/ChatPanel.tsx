@@ -9,7 +9,7 @@ import type { ChatMessage, RestaurantResult } from "@/lib/types";
 // Stable singleton — avoids a fresh unauthenticated client on every sendMessage call
 const supabase = createClient();
 import RestaurantCard from "@/components/chat/RestaurantCard";
-import { ArrowUp } from "lucide-react";
+import { ArrowUp, Sparkles } from "lucide-react";
 
 interface ChatPanelProps {
   onRestaurantClick?: (restaurant: RestaurantResult) => void;
@@ -17,10 +17,12 @@ interface ChatPanelProps {
 }
 
 const SUGGESTIONS = [
-  "Biryani near T. Nagar",
-  "Veg-friendly cafes in Adyar",
-  "Best dosas in Mylapore",
+  "Biryani in T Nagar",
+  "Veg cafes in Adyar",
   "Late night food in OMR",
+  "Budget lunch in Anna Nagar",
+  "Best coffee in Nungambakkam",
+  "Non-veg near Velachery",
 ];
 
 // Mobile bottom nav height + safe area reserve
@@ -153,31 +155,31 @@ export default function ChatPanel({ onRestaurantClick, onRestaurantsUpdate }: Ch
       >
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center px-4">
-            <h2 className="text-lg font-semibold mb-1 text-text-primary">
+            <Sparkles className="w-6 h-6 mb-3" style={{ color: "#FF6B35" }} />
+            <h2 className="text-base font-medium mb-1" style={{ color: "#F5F5F5" }}>
               What are you craving?
             </h2>
-            <p className="text-sm mb-6 text-text-secondary">
-              Ask me anything about food in Chennai
+            <p className="text-sm mb-6" style={{ color: "#555555" }}>
+              Try one of these or type your own
             </p>
             <div className="flex flex-wrap gap-2 justify-center max-w-sm">
               {SUGGESTIONS.map((s) => (
                 <button
                   key={s}
-                  onClick={() => sendMessage(s)}
-                  className="px-4 py-2 text-[13px] text-text-secondary transition-default cursor-pointer"
+                  onClick={() => { setInput(s); sendMessage(s); }}
+                  className="px-4 py-2 text-sm rounded-full transition-colors cursor-pointer"
                   style={{
-                    backgroundColor: "var(--bg-elevated)",
-                    border: "1px solid var(--border)",
-                    borderRadius: "var(--radius-xl)",
-                    minHeight: "44px",
+                    border: "1px solid #2A2A2A",
+                    backgroundColor: "#1A1A1A",
+                    color: "#888888",
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = "var(--accent)";
-                    e.currentTarget.style.color = "var(--accent)";
+                    e.currentTarget.style.borderColor = "#FF6B35";
+                    e.currentTarget.style.color = "#FF6B35";
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = "var(--border)";
-                    e.currentTarget.style.color = "var(--text-secondary)";
+                    e.currentTarget.style.borderColor = "#2A2A2A";
+                    e.currentTarget.style.color = "#888888";
                   }}
                 >
                   {s}

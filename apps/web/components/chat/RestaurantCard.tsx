@@ -1,6 +1,7 @@
-import { Share2, Star } from "lucide-react";
+import { Share2, Star, Heart } from "lucide-react";
 import type { RestaurantResult } from "@/lib/types";
 import { handleShare } from "@/lib/share";
+import { useFavorites } from "@/hooks/useFavorites";
 
 function isOpenNow(
   openingHours: RestaurantResult["opening_hours"]
@@ -25,6 +26,8 @@ export default function RestaurantCard({
   restaurant: RestaurantResult;
   onClick: () => void;
 }) {
+  const { isFavorite, toggleFavorite } = useFavorites();
+  const favorited = isFavorite(restaurant.id);
   const priceSymbol = restaurant.price_range
     ? "₹".repeat(restaurant.price_range)
     : "₹₹";
@@ -34,7 +37,7 @@ export default function RestaurantCard({
   return (
     <button
       onClick={onClick}
-      className="w-full text-left p-4 transition-default cursor-pointer group"
+      className="relative w-full text-left p-4 transition-default cursor-pointer group"
       style={{
         backgroundColor: "var(--bg-card)",
         border: "1px solid var(--border)",
@@ -49,6 +52,18 @@ export default function RestaurantCard({
       }
     >
       <div className="flex items-start justify-between gap-2">
+        {/* Heart — top-right, 44px tap target */}
+        <button
+          className="absolute top-2 right-2 flex items-center justify-center active:scale-90 transition-transform"
+          style={{ width: "44px", height: "44px", background: "transparent", border: "none" }}
+          onClick={(e) => { e.stopPropagation(); toggleFavorite(restaurant.id); }}
+          aria-label={favorited ? "Remove from favorites" : "Save to favorites"}
+        >
+          <Heart
+            className="w-4 h-4"
+            style={{ color: favorited ? "#F87171" : "#555555", fill: favorited ? "#F87171" : "transparent" }}
+          />
+        </button>
         <div className="min-w-0 flex-1">
           {/* Veg dot + name */}
           <div className="flex items-center gap-2">

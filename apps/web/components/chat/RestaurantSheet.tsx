@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Share2, Star, X } from "lucide-react";
+import { Heart, Share2, Star, X } from "lucide-react";
 import type { RestaurantResult } from "@/lib/types";
 import { handleShare } from "@/lib/share";
+import { useFavorites } from "@/hooks/useFavorites";
 
 interface RestaurantSheetProps {
   restaurant: RestaurantResult | null;
@@ -16,6 +17,7 @@ export default function RestaurantSheet({
   onClose,
   onAskCravely,
 }: RestaurantSheetProps) {
+  const { isFavorite, toggleFavorite } = useFavorites();
   const [visible, setVisible] = useState(false);
   // true on screens narrower than 640px (Tailwind sm breakpoint)
   const [isMobile, setIsMobile] = useState(false);
@@ -133,6 +135,21 @@ export default function RestaurantSheet({
           <h2 className="text-xl font-bold text-text-primary pr-4 leading-tight">
             {restaurant.name}
           </h2>
+          <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={() => toggleFavorite(restaurant.id)}
+            className="flex items-center justify-center active:scale-90 transition-transform"
+            style={{ width: "44px", height: "44px", background: "transparent", border: "none" }}
+            aria-label={isFavorite(restaurant.id) ? "Remove from favorites" : "Save to favorites"}
+          >
+            <Heart
+              className="w-5 h-5"
+              style={{
+                color: isFavorite(restaurant.id) ? "#F87171" : "#555555",
+                fill: isFavorite(restaurant.id) ? "#F87171" : "transparent",
+              }}
+            />
+          </button>
           <button
             onClick={handleClose}
             className="flex items-center justify-center cursor-pointer transition-default shrink-0"
@@ -148,6 +165,7 @@ export default function RestaurantSheet({
           >
             <X className="w-4 h-4 text-text-secondary" />
           </button>
+          </div>
         </div>
 
         <div className="p-5 space-y-5">

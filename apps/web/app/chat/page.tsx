@@ -22,6 +22,7 @@ export default function ChatPage() {
   const [activeView, setActiveView] = useState<View>("chat");
   const [sheetRestaurant, setSheetRestaurant] = useState<RestaurantResult | null>(null);
   const [currentRestaurants, setCurrentRestaurants] = useState<RestaurantResult[]>([]);
+  const [selectedRestaurantId, setSelectedRestaurantId] = useState<string | null>(null);
 
   function handleAskCravely(name: string) {
     setActiveView("chat");
@@ -72,12 +73,14 @@ export default function ChatPage() {
               onAskCravely={handleAskCravely}
               onRestaurantClick={handleRestaurantClick}
               onRestaurantsUpdate={setCurrentRestaurants}
+              onSelectRestaurant={(id) => { setSelectedRestaurantId(id); setActiveView("map"); }}
             />
           )}
           {activeView === "map" && (
             <MapPanel
               restaurants={currentRestaurants}
               onAskCravely={handleAskCravely}
+              selectedRestaurantId={selectedRestaurantId}
             />
           )}
           {activeView === "chat" && (

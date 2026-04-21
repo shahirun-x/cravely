@@ -27,6 +27,7 @@ interface SearchPanelProps {
   onAskCravely: (name: string) => void;
   onRestaurantClick?: (restaurant: RestaurantResult) => void;
   onRestaurantsUpdate?: (restaurants: RestaurantResult[]) => void;
+  onSelectRestaurant?: (id: string) => void;
 }
 
 function CustomCheckbox({
@@ -195,6 +196,7 @@ export default function SearchPanel({
   onAskCravely: _onAskCravely,
   onRestaurantClick,
   onRestaurantsUpdate,
+  onSelectRestaurant,
 }: SearchPanelProps) {
   const [neighborhood, setNeighborhood] = useState<string | null>(null);
   const [cuisine, setCuisine] = useState<string | null>(null);
@@ -313,7 +315,7 @@ export default function SearchPanel({
               <RestaurantCard
                 key={r.id || r.name}
                 restaurant={r}
-                onClick={() => onRestaurantClick?.(r)}
+                onClick={() => { onRestaurantClick?.(r); onSelectRestaurant?.(r.id); }}
               />
             ))}
           </div>
