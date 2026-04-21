@@ -1,5 +1,20 @@
-import { Star } from "lucide-react";
+import { Share2, Star } from "lucide-react";
 import type { RestaurantResult } from "@/lib/types";
+
+function handleShare(restaurant: RestaurantResult) {
+  const text =
+    `Check out ${restaurant.name} on Cravely!\n` +
+    `${restaurant.neighborhood} | ` +
+    `${restaurant.is_pure_veg ? "Veg" : "Non-veg"} | ` +
+    `⭐${restaurant.avg_rating ?? "N/A"}\n` +
+    `Discover more at https://cravely-six.vercel.app`;
+
+  if (navigator.share) {
+    navigator.share({ text });
+  } else {
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+  }
+}
 
 export default function RestaurantCard({
   restaurant,
@@ -80,18 +95,36 @@ export default function RestaurantCard({
           </span>
         </div>
       </div>
-      <div className="mt-3 w-full py-2 flex items-center justify-center text-xs font-medium cursor-pointer"
-        style={{
-          backgroundColor: "var(--accent-muted)",
-          color: "var(--accent)",
-          borderRadius: "var(--radius-sm)",
-        }}
-        onClick={(e) => {
-          e.stopPropagation();
-          onClick();
-        }}
-      >
-        View Details
+      <div className="mt-3 flex gap-2">
+        <div
+          className="flex-1 py-2 flex items-center justify-center text-xs font-medium cursor-pointer"
+          style={{
+            backgroundColor: "var(--accent-muted)",
+            color: "var(--accent)",
+            borderRadius: "var(--radius-sm)",
+          }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onClick();
+          }}
+        >
+          View Details
+        </div>
+        <div
+          className="py-2 px-3 flex items-center justify-center cursor-pointer transition-default"
+          style={{
+            backgroundColor: "var(--bg-elevated)",
+            color: "var(--text-muted)",
+            borderRadius: "var(--radius-sm)",
+          }}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleShare(restaurant);
+          }}
+          title="Share"
+        >
+          <Share2 className="w-3.5 h-3.5" />
+        </div>
       </div>
     </button>
   );
