@@ -68,7 +68,7 @@ async def semantic_search(
         SELECT
             r.id, r.name, r.description, r.address,
             r.avg_rating, r.price_range, r.is_pure_veg, r.timings,
-            r.latitude, r.longitude, r.opening_hours,
+            r.latitude, r.longitude, NULL::jsonb AS opening_hours,
             r.zomato_url, r.swiggy_url,
             n.name AS neighborhood,
             1 - (r.embedding <=> $1::vector) AS similarity,
@@ -145,18 +145,23 @@ async def filter_search(
         params.append(cuisine)
         param_idx += 1
     if max_price is not None:
-        conditions.append(f"r.price_range_max <= ${param_idx}")
-        params.append(max_price)
-        param_idx += 1
+        # Map numeric price ceiling to categorical price_range (1=budget≤200, 2=mid≤500, 3=premium)
+        if max_price <= 200:
+            conditions.append("r.price_range <= 1")
+        elif max_price <= 500:
+            conditions.append("r.price_range <= 2")
+        # else no restriction — everything fits under a high ceiling
     elif price_range is not None:
         # Fall back to categorical price_range only when no exact price given
         conditions.append(f"r.price_range = ${param_idx}")
         params.append(price_range)
         param_idx += 1
     if min_price is not None:
-        conditions.append(f"r.price_range_max >= ${param_idx}")
-        params.append(min_price)
-        param_idx += 1
+        # Map numeric floor to categorical price_range
+        if min_price >= 800:
+            conditions.append("r.price_range >= 3")
+        elif min_price >= 400:
+            conditions.append("r.price_range >= 2")
     if is_veg is True:
         conditions.append("r.is_pure_veg = true")
 
@@ -167,7 +172,7 @@ async def filter_search(
         SELECT
             r.id, r.name, r.description, r.address,
             r.avg_rating, r.price_range, r.is_pure_veg, r.timings,
-            r.latitude, r.longitude, r.opening_hours,
+            r.latitude, r.longitude, NULL::jsonb AS opening_hours,
             r.zomato_url, r.swiggy_url,
             n.name AS neighborhood,
             COALESCE(
@@ -215,7 +220,7 @@ async def get_restaurant_detail(conn, restaurant_id: str) -> dict | None:
         SELECT
             r.id, r.name, r.description, r.address,
             r.avg_rating, r.price_range, r.is_pure_veg, r.timings,
-            r.latitude, r.longitude, r.opening_hours,
+            r.latitude, r.longitude, NULL::jsonb AS opening_hours,
             r.phone, r.zomato_url, r.swiggy_url,
             n.name AS neighborhood,
             COALESCE(
