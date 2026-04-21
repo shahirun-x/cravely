@@ -13,7 +13,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import UUID4, BaseModel, Field, field_validator
-from main import limiter
+from app.limiter import limiter
 from app.dependencies.auth import verify_supabase_token
 from app.middleware.ratelimit import check_user_rate_limit
 

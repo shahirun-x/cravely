@@ -3,7 +3,7 @@ from fastapi import APIRouter, Request
 from app.db.connection import get_db
 from app.tools.search import filter_search, semantic_search
 from app.models.schemas import RestaurantResult
-from main import limiter
+from app.limiter import limiter
 
 router = APIRouter()
 

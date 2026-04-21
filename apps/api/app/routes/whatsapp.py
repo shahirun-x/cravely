@@ -3,7 +3,7 @@ import os
 
 import httpx
 from fastapi import APIRouter, Request, Response
-from main import limiter
+from app.limiter import limiter
 
 logger = logging.getLogger(__name__)
 

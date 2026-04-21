@@ -33,10 +33,9 @@ _check_required_env_vars()
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
-from slowapi.util import get_remote_address
 
 from google import genai
 
@@ -45,15 +44,11 @@ from app.db.connection import open_pool, close_pool
 from app.middleware.blocklist import IPBlocklistMiddleware
 from app.middleware.logging import RequestLoggingMiddleware
 from app.middleware.ratelimit import RedisRateLimitMiddleware
+from app.limiter import limiter
 from app.routes.chat import router as chat_router
 from app.tools.search import set_gemini_client as set_tools_client
 
 logger = logging.getLogger(__name__)
-
-# ---------------------------------------------------------------------------
-# slowapi limiter — kept for the @limiter.limit decorators on individual routes
-# ---------------------------------------------------------------------------
-limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
 
 
 @asynccontextmanager
