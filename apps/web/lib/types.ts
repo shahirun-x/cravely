@@ -19,6 +19,7 @@ export interface RestaurantResult {
   phone?: string | null;
   latitude?: number | null;
   longitude?: number | null;
+  photo_url?: string | null;
 }
 
 export interface MenuItem {

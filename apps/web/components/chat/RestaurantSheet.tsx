@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { Heart, Share2, Star, X } from "lucide-react";
 import type { RestaurantResult } from "@/lib/types";
@@ -168,6 +169,12 @@ export default function RestaurantSheet({
           </div>
         </div>
 
+        {restaurant.photo_url && (
+          <div className="relative w-full h-48 shrink-0">
+            <Image src={restaurant.photo_url} alt={restaurant.name} fill style={{ objectFit: "cover" }} sizes="448px" />
+          </div>
+        )}
+
         <div className="p-5 space-y-5">
           {/* Tags row */}
           <div className="flex items-center gap-2 flex-wrap">
@@ -195,17 +202,16 @@ export default function RestaurantSheet({
           </div>
 
           {/* Rating row */}
-          <div className="flex items-center gap-4 flex-wrap">
+          <div className="flex items-center gap-3 flex-wrap">
             {restaurant.avg_rating && (
-              <div className="flex items-center gap-1.5">
-                <Star className="w-4 h-4 fill-star text-star" />
-                <span className="text-lg font-semibold text-text-primary">
+              <div className="flex items-center gap-1">
+                <Star className="w-3 h-3" style={{ fill: "#FBBF24", color: "#FBBF24" }} />
+                <span className="text-sm text-[#F5F5F5]">
                   {restaurant.avg_rating}
                 </span>
-                <span className="text-sm text-text-muted">rating</span>
               </div>
             )}
-            <span className="text-sm font-medium text-text-muted">
+            <span className="text-sm text-[#888888]">
               {priceSymbol}
             </span>
             <span className="flex items-center gap-1.5 text-sm">

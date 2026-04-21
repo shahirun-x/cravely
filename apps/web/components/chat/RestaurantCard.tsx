@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { Share2, Star, Heart } from "lucide-react";
 import type { RestaurantResult } from "@/lib/types";
 import { handleShare } from "@/lib/share";
@@ -51,6 +52,11 @@ export default function RestaurantCard({
         (e.currentTarget.style.borderColor = "var(--border)")
       }
     >
+      {restaurant.photo_url && (
+        <div className="relative w-full h-36 mb-3 overflow-hidden" style={{ borderRadius: "var(--radius-sm)" }}>
+          <Image src={restaurant.photo_url} alt={restaurant.name} fill style={{ objectFit: "cover" }} sizes="400px" />
+        </div>
+      )}
       <div className="flex items-start justify-between gap-2">
         {/* Heart — top-right, 44px tap target */}
         <button
@@ -111,13 +117,15 @@ export default function RestaurantCard({
 
         {/* Right column: rating + price + open badge */}
         <div className="flex flex-col items-end gap-1 shrink-0">
-          {restaurant.avg_rating && (
-            <span className="flex items-center gap-1 text-[13px] text-text-secondary">
-              <Star className="w-3.5 h-3.5 fill-star text-star" />
-              {restaurant.avg_rating}
-            </span>
-          )}
-          <span className="text-[13px] text-text-muted">{priceSymbol}</span>
+          <div className="flex items-center gap-3">
+            {restaurant.avg_rating && (
+              <span className="flex items-center gap-1">
+                <Star className="w-3 h-3" style={{ fill: "#FBBF24", color: "#FBBF24" }} />
+                <span className="text-sm text-[#F5F5F5]">{restaurant.avg_rating}</span>
+              </span>
+            )}
+            <span className="text-sm text-[#888888]">{priceSymbol}</span>
+          </div>
           {openStatus !== null && (
             <span
               className="text-[10px] font-semibold px-1.5 py-0.5"
