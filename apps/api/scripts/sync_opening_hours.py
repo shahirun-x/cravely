@@ -43,12 +43,16 @@ SLEEP_BETWEEN_REQUESTS = 0.3   # seconds — stay within free-tier QPS
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
-def find_place_id(name: str, neighborhood: str) -> str | None:
+def find_place_id(name: str) -> str | None:
     """Search Google Places Text Search and return the best matching place_id."""
-    query = f"{name} restaurant {neighborhood} Chennai"
     resp = requests.get(
         TEXT_SEARCH_URL,
-        params={"query": query, "key": API_KEY, "type": "restaurant"},
+        params={
+            "query": f"{name} restaurant Chennai",
+            "key": API_KEY,
+            "region": "in",
+            "language": "en",
+        },
         timeout=10,
     )
     data = resp.json()
@@ -138,7 +142,7 @@ def sync_hours(conn, update_all: bool = False) -> None:
         print(f"  [{i}/{total}] {name} ({neighborhood or 'Unknown'}) ... ", end="", flush=True)
 
         try:
-            place_id = find_place_id(name, neighborhood or "Chennai")
+            place_id = find_place_id(name)
             time.sleep(SLEEP_BETWEEN_REQUESTS)
 
             if not place_id:

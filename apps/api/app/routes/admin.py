@@ -22,11 +22,15 @@ PLACE_DETAILS_URL = "https://maps.googleapis.com/maps/api/place/details/json"
 SLEEP_BETWEEN_REQUESTS = 0.3
 
 
-async def _find_place_id(client: httpx.AsyncClient, api_key: str, name: str, neighborhood: str) -> str | None:
-    query = f"{name} restaurant {neighborhood} Chennai"
+async def _find_place_id(client: httpx.AsyncClient, api_key: str, name: str) -> str | None:
     resp = await client.get(
         TEXT_SEARCH_URL,
-        params={"query": query, "key": api_key, "type": "restaurant"},
+        params={
+            "query": f"{name} restaurant Chennai",
+            "key": api_key,
+            "region": "in",
+            "language": "en",
+        },
         timeout=10,
     )
     data = resp.json()
@@ -118,7 +122,7 @@ async def sync_hours(update_all: bool = False):
                     prefix = f"  [{i}/{total}] {name} ({neighborhood})"
 
                     try:
-                        place_id = await _find_place_id(http, api_key, name, neighborhood)
+                        place_id = await _find_place_id(http, api_key, name)
                         await asyncio.sleep(SLEEP_BETWEEN_REQUESTS)
 
                         if not place_id:
