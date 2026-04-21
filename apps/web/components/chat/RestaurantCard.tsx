@@ -1,6 +1,24 @@
 import { Share2, Star } from "lucide-react";
 import type { RestaurantResult } from "@/lib/types";
 
+function isOpenNow(
+  openingHours: RestaurantResult["opening_hours"]
+): boolean | null {
+  if (!openingHours) return null;
+  const now = new Date();
+  // getDay() returns 0=Sunday..6=Saturday, matching Google's period.day
+  const day = now.getDay();
+  const time = now.getHours() * 100 + now.getMinutes();
+  const todayKey = String(day);
+  const todayHours = openingHours[todayKey];
+  if (!todayHours) return null;
+  // Handle midnight-spanning ranges (close < open means closing past midnight)
+  if (todayHours.close < todayHours.open) {
+    return time >= todayHours.open || time <= todayHours.close;
+  }
+  return time >= todayHours.open && time <= todayHours.close;
+}
+
 function handleShare(restaurant: RestaurantResult) {
   const text =
     `Check out ${restaurant.name} on Cravely!\n` +
@@ -93,6 +111,24 @@ export default function RestaurantCard({
               {restaurant.is_pure_veg ? "Veg" : "Non-veg"}
             </span>
           </span>
+          {(() => {
+            const open = isOpenNow(restaurant.opening_hours ?? null);
+            if (open === null) return null;
+            return (
+              <span
+                className="text-[10px] font-semibold px-1.5 py-0.5"
+                style={{
+                  backgroundColor: open
+                    ? "rgba(74,222,128,0.15)"
+                    : "rgba(239,68,68,0.15)",
+                  color: open ? "#4ade80" : "#f87171",
+                  borderRadius: "var(--radius-sm)",
+                }}
+              >
+                {open ? "Open" : "Closed"}
+              </span>
+            );
+          })()}
         </div>
       </div>
       <div className="mt-3 flex gap-2">

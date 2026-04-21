@@ -19,6 +19,7 @@ class RestaurantResult(BaseModel):
     price_range: Optional[int] = None  # 1=budget, 2=mid, 3=premium
     is_pure_veg: bool = False
     timings: Optional[dict] = None
+    opening_hours: Optional[dict] = None
     cuisines: List[str] = Field(default_factory=list)
     top_dishes: List[str] = Field(default_factory=list)
     zomato_url: Optional[str] = None

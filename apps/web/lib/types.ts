@@ -10,6 +10,7 @@ export interface RestaurantResult {
   price_range?: number | null;
   is_pure_veg: boolean;
   timings?: Record<string, string> | null;
+  opening_hours?: Record<string, { open: number; close: number }> | null;
   cuisines: string[];
   top_dishes: string[];
   zomato_url?: string | null;

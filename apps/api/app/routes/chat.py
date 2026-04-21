@@ -128,6 +128,7 @@ async def chat(request: ChatRequest) -> AgentResponse:
                     swiggy_url=r.get("swiggy_url"),
                     latitude=r.get("latitude"),
                     longitude=r.get("longitude"),
+                    opening_hours=r.get("opening_hours"),
                 ))
             except Exception:
                 pass
