@@ -55,15 +55,15 @@ from groq import Groq
 
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
-def _call_llm(prompt: str, system: str = "") -> str:
+def _call_llm(prompt: str, system: str = "", max_tokens: int = 1000, temperature: float = 0.7) -> str:
     response = client.chat.completions.create(
         model="llama-3.3-70b-versatile",
         messages=[
             {"role": "system", "content": system},
             {"role": "user", "content": prompt}
         ],
-        max_tokens=1000,
-        temperature=0.7
+        max_tokens=max_tokens,
+        temperature=temperature,
     )
     return response.choices[0].message.content
 
@@ -305,19 +305,25 @@ async def response_formatter_node(state: AgentState) -> dict[str, Any]:
             "restaurants": [],
         }
 
-    # Format tool results for Gemini
+    # Format tool results for the LLM
+    restaurant_count = len(tool_results)
     results_text = json.dumps(tool_results, indent=2, default=str) if tool_results else "No results found."
 
     user_input = (
         f"Channel: {channel}\n"
         f"User intent: {intent}\n"
-        f"User message: {state['message']}\n\n"
-        f"Found {len(tool_results)} restaurants.\n"
+        f"Original user query: {state['message']}\n"
+        f"Restaurants found: {restaurant_count}\n\n"
         f"Search results:\n{results_text}"
     )
 
     try:
-        response_text = _call_llm(user_input, RESPONSE_FORMATTER_PROMPT)
+        response_text = _call_llm(
+            user_input,
+            RESPONSE_FORMATTER_PROMPT,
+            max_tokens=300,
+            temperature=0.7,
+        )
     except Exception as e:
         logger.error("Response formatting error: %s", type(e).__name__)
         response_text = "I had a little trouble finding that. Could you try rephrasing your request?"
