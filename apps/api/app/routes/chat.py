@@ -189,23 +189,23 @@ async def _check_session_flood(session_id: str) -> tuple[bool, str]:
 @router.post("/chat", response_model=AgentResponse)
 @limiter.limit("20/minute")
 async def chat(
-    http_request: Request,
-    request: ValidatedChatRequest,
+    request: Request,
+    body: ValidatedChatRequest,
     _user_id: str = Depends(verify_supabase_token),
 ) -> AgentResponse:
     """Main chat endpoint. Sends user message through the LangGraph agent."""
     # --- Request size guard ---
-    content_length = http_request.headers.get("content-length")
+    content_length = request.headers.get("content-length")
     if content_length and int(content_length) > _MAX_BODY_BYTES:
         raise HTTPException(status_code=413, detail="Request body too large")
 
     # Read raw body to enforce size even when Content-Length is absent
-    body = await http_request.body()
-    if len(body) > _MAX_BODY_BYTES:
+    raw_body = await request.body()
+    if len(raw_body) > _MAX_BODY_BYTES:
         raise HTTPException(status_code=413, detail="Request body too large")
 
-    session_id = str(request.session_id) if request.session_id else str(uuid.uuid4())
-    user_id_str = str(request.user_id) if request.user_id else None
+    session_id = str(body.session_id) if body.session_id else str(uuid.uuid4())
+    user_id_str = str(body.user_id) if body.user_id else None
 
     # --- Per-user hourly limit ---
     if user_id_str:
@@ -227,11 +227,11 @@ async def chat(
         )
 
     initial_state = {
-        "message": request.message,
+        "message": body.message,
         "session_id": session_id,
         "user_id": user_id_str,
-        "channel": request.channel,
-        "city": request.city,
+        "channel": body.channel,
+        "city": body.city,
         "intent": "",
         "extracted_params": {},
         "tool_used": "",
@@ -280,8 +280,8 @@ async def chat(
         _log_conversation(
             user_id=user_id_str,
             session_id=session_id,
-            channel=request.channel,
-            user_message=request.message,
+            channel=body.channel,
+            user_message=body.message,
             assistant_message=response.message,
             intent=response.intent,
             tool_used=response.tool_used,
