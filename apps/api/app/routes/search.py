@@ -1,13 +1,16 @@
 from typing import Optional, List
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from app.db.connection import get_db
 from app.tools.search import filter_search, semantic_search
 from app.models.schemas import RestaurantResult
+from main import limiter
 
 router = APIRouter()
 
 @router.get("/search", response_model=List[RestaurantResult])
+@limiter.limit("60/minute")
 async def search_endpoint(
+    request: Request,
     neighborhood: Optional[str] = None,
     cuisine: Optional[str] = None,
     item_name: Optional[str] = None

@@ -10,3 +10,5 @@ pydantic
 psycopg[binary]
 groq
 httpx
+slowapi
+python-jose[cryptography]

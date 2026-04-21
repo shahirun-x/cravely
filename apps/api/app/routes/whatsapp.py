@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Request, Response
 import httpx
 import os
+from main import limiter
 
 router = APIRouter()
 
@@ -19,6 +20,7 @@ async def verify_webhook(request: Request):
 
 # Receive messages (POST)
 @router.post("/webhook/whatsapp")
+@limiter.limit("30/minute")
 async def receive_message(request: Request):
     body = await request.json()
     try:
@@ -73,6 +75,7 @@ async def receive_message(request: Request):
                 }
             )
     except Exception as e:
-        print(f"WhatsApp webhook error: {e}")
-    
+        import logging
+        logging.getLogger(__name__).exception("WhatsApp webhook error: %s", e)
+
     return {"status": "ok"}
