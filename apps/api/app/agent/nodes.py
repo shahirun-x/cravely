@@ -318,6 +318,7 @@ async def response_formatter_node(state: AgentState) -> dict[str, Any]:
         f"Channel: {channel}\n"
         f"User intent: {intent}\n"
         f"User message: {state['message']}\n\n"
+        f"Found {len(tool_results)} restaurants.\n"
         f"Search results:\n{results_text}"
     )
 
