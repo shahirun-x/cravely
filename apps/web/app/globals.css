@@ -142,13 +142,25 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
   }
   body {
     @apply bg-bg-primary text-text-primary;
     font-feature-settings: "cv02", "cv03", "cv04";
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    padding-top: env(safe-area-inset-top);
   }
   html {
     @apply font-sans;
+  }
+  input, textarea, select {
+    font-size: 16px;
+  }
+  button, a, [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
   }
 }
 

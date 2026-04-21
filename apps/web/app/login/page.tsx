@@ -26,36 +26,32 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-bg-primary">
-      {/* Login card */}
+    <div
+      className="min-h-screen flex items-center justify-center bg-bg-primary"
+      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+    >
+      {/* Full-screen on mobile, card on desktop */}
       <div
-        className="w-full max-w-[400px] p-10 text-center"
+        className="w-full h-screen sm:h-auto flex flex-col justify-center px-6 sm:px-10 sm:max-w-[400px] sm:rounded-[var(--radius-lg)] text-center"
         style={{
-          backgroundColor: "var(--bg-card)",
-          border: "1px solid var(--border)",
-          borderRadius: "var(--radius-lg)",
+          backgroundColor: "var(--bg-primary)",
+          // card appearance only on desktop
         }}
       >
         {/* Wordmark */}
-        <h1 className="text-2xl font-extrabold text-text-primary mb-2">
+        <h1 className="text-4xl font-extrabold text-text-primary mb-3">
           Cravely
         </h1>
 
         {/* Tagline */}
-        <p className="text-[15px] text-text-secondary mb-6">
+        <p className="text-base text-text-secondary mb-10">
           Discover the best food around you
         </p>
-
-        {/* Divider */}
-        <div
-          className="w-full h-px mb-6"
-          style={{ backgroundColor: "var(--border)" }}
-        />
 
         {/* Error */}
         {error && (
           <div
-            className="mb-4 p-3 text-sm rounded-lg"
+            className="mb-5 p-3 text-sm rounded-lg"
             style={{
               backgroundColor: "rgba(248, 113, 113, 0.12)",
               color: "var(--non-veg)",
@@ -69,11 +65,13 @@ export default function LoginPage() {
         <button
           onClick={handleGoogleLogin}
           disabled={loading}
-          className="w-full flex items-center justify-center gap-3 h-12 text-base font-medium cursor-pointer transition-default disabled:opacity-60 disabled:cursor-not-allowed"
+          className="w-full flex items-center justify-center gap-3 font-medium cursor-pointer transition-default disabled:opacity-60 disabled:cursor-not-allowed active:scale-[0.98]"
           style={{
             backgroundColor: "#FFFFFF",
             color: "#1A1A1A",
-            borderRadius: "var(--radius-md)",
+            borderRadius: "var(--radius-xl)",
+            height: "56px",
+            fontSize: "16px",
             border: "none",
           }}
           onMouseEnter={(e) =>

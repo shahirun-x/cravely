@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { ChevronLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { createUserProfile, saveUserPreferences } from "@/lib/supabase/user";
 
@@ -76,9 +77,7 @@ export default function OnboardingPage() {
       setSaving(true);
       try {
         const supabase = createClient();
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
+        const { data: { user } } = await supabase.auth.getUser();
 
         if (!user) {
           router.push("/login");
@@ -116,145 +115,160 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 bg-bg-primary">
+    <div
+      className="min-h-screen flex flex-col bg-bg-primary"
+      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+    >
+      {/* Top bar */}
       <div
-        className="w-full max-w-[520px] p-12"
+        className="flex items-center px-4 shrink-0"
         style={{
-          backgroundColor: "var(--bg-card)",
-          border: "1px solid var(--border)",
-          borderRadius: "var(--radius-lg)",
+          height: "56px",
+          paddingTop: "env(safe-area-inset-top)",
+          borderBottom: "1px solid var(--border)",
+          backgroundColor: "var(--bg-secondary)",
         }}
       >
-        {/* Dot indicators */}
-        <div className="flex items-center justify-center gap-2 mb-6">
-          {STEPS.map((_, i) => (
-            <div
-              key={i}
-              className="w-2 h-2 rounded-full transition-default"
-              style={{
-                backgroundColor:
-                  i === step ? "var(--accent)" : "var(--border)",
-              }}
-            />
-          ))}
-        </div>
-
-        {/* Step label */}
-        <p className="label-text text-center mb-6">
-          Step {step + 1} of {STEPS.length}
-        </p>
-
-        {/* Question with slide transition */}
-        <div
-          key={step}
-          className="animate-in"
+        <button
+          onClick={handleBack}
+          className="flex items-center justify-center transition-default cursor-pointer"
           style={{
-            animation: `${
-              direction === "forward" ? "slideInRight" : "slideInLeft"
-            } 0.3s ease-out`,
+            visibility: step === 0 ? "hidden" : "visible",
+            width: "44px",
+            height: "44px",
+            color: "var(--text-muted)",
+            minHeight: "unset",
+            minWidth: "unset",
           }}
         >
-          <h2 className="heading-md text-center mb-8">{current.question}</h2>
+          <ChevronLeft className="w-5 h-5" />
+        </button>
 
-          {/* Pill buttons */}
-          <div className="flex flex-wrap gap-3 justify-center mb-10">
-            {current.options.map((option) => {
-              const selected = currentSelections.includes(option);
-              return (
-                <button
-                  key={option}
-                  onClick={() => toggleOption(option)}
-                  className="transition-default cursor-pointer"
-                  style={{
-                    backgroundColor: selected
-                      ? "var(--accent-muted)"
-                      : "var(--bg-elevated)",
-                    border: `1px solid ${
-                      selected ? "var(--accent)" : "var(--border)"
-                    }`,
-                    borderRadius: "var(--radius-xl)",
-                    padding: "12px 20px",
-                    color: selected
-                      ? "var(--accent)"
-                      : "var(--text-secondary)",
-                    fontSize: "14px",
-                    fontWeight: selected ? 600 : 400,
-                  }}
-                >
-                  {option}
-                </button>
-              );
-            })}
+        {/* Progress bar */}
+        <div className="flex-1 mx-4">
+          <div
+            className="h-1 rounded-full overflow-hidden"
+            style={{ backgroundColor: "var(--border)" }}
+          >
+            <div
+              className="h-full rounded-full transition-all duration-300"
+              style={{
+                width: `${((step + 1) / STEPS.length) * 100}%`,
+                backgroundColor: "var(--accent)",
+              }}
+            />
           </div>
         </div>
 
-        {/* Navigation */}
-        <div className="flex items-center justify-between">
-          <button
-            onClick={handleBack}
-            className="text-sm font-medium text-text-muted transition-default cursor-pointer hover:text-text-secondary"
-            style={{ visibility: step === 0 ? "hidden" : "visible" }}
-          >
-            Back
-          </button>
-          <button
-            onClick={handleNext}
-            disabled={currentSelections.length === 0 || saving}
-            className="btn-accent flex-none disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none"
-          >
-            {saving ? (
-              <span className="flex items-center gap-2">
-                <svg
-                  className="animate-spin h-4 w-4"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  />
-                </svg>
-                Saving...
-              </span>
-            ) : isLast ? (
-              "Finish"
-            ) : (
-              "Next"
-            )}
-          </button>
+        <span className="text-xs text-text-muted shrink-0" style={{ minWidth: "44px", textAlign: "right" }}>
+          {step + 1} / {STEPS.length}
+        </span>
+      </div>
+
+      {/* Step content */}
+      <div
+        key={step}
+        className="flex-1 flex flex-col items-center justify-center px-6 py-10"
+        style={{
+          animation: `${direction === "forward" ? "slideInRight" : "slideInLeft"} 0.3s ease-out`,
+        }}
+      >
+        <h2
+          className="font-bold text-center mb-8 text-text-primary"
+          style={{ fontSize: "clamp(1.5rem, 5vw, 1.75rem)", lineHeight: 1.2 }}
+        >
+          {current.question}
+        </h2>
+
+        {/* Option pills */}
+        <div className="flex flex-wrap gap-3 justify-center w-full max-w-sm">
+          {current.options.map((option) => {
+            const selected = currentSelections.includes(option);
+            return (
+              <button
+                key={option}
+                onClick={() => toggleOption(option)}
+                className="transition-default cursor-pointer"
+                style={{
+                  backgroundColor: selected
+                    ? "rgba(255, 107, 53, 0.1)"
+                    : "var(--bg-elevated)",
+                  border: `2px solid ${selected ? "var(--accent)" : "var(--border)"}`,
+                  borderRadius: "var(--radius-xl)",
+                  padding: "12px 20px",
+                  minHeight: "48px",
+                  color: selected ? "var(--accent)" : "var(--text-secondary)",
+                  fontSize: "15px",
+                  fontWeight: selected ? 600 : 400,
+                }}
+              >
+                {option}
+              </button>
+            );
+          })}
         </div>
+      </div>
+
+      {/* Fixed bottom next button */}
+      <div
+        className="px-6 pt-3 shrink-0"
+        style={{
+          paddingBottom: "max(24px, env(safe-area-inset-bottom))",
+          backgroundColor: "var(--bg-primary)",
+          borderTop: "1px solid var(--border)",
+        }}
+      >
+        <button
+          onClick={handleNext}
+          disabled={currentSelections.length === 0 || saving}
+          className="w-full font-semibold text-white transition-default cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          style={{
+            backgroundColor: "var(--accent)",
+            borderRadius: "var(--radius-xl)",
+            height: "56px",
+            fontSize: "16px",
+          }}
+        >
+          {saving ? (
+            <>
+              <svg
+                className="animate-spin h-4 w-4"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                />
+              </svg>
+              Saving...
+            </>
+          ) : isLast ? (
+            "Finish"
+          ) : (
+            "Next"
+          )}
+        </button>
       </div>
 
       <style jsx>{`
         @keyframes slideInRight {
-          from {
-            opacity: 0;
-            transform: translateX(30px);
-          }
-          to {
-            opacity: 1;
-            transform: translateX(0);
-          }
+          from { opacity: 0; transform: translateX(30px); }
+          to   { opacity: 1; transform: translateX(0); }
         }
         @keyframes slideInLeft {
-          from {
-            opacity: 0;
-            transform: translateX(-30px);
-          }
-          to {
-            opacity: 1;
-            transform: translateX(0);
-          }
+          from { opacity: 0; transform: translateX(-30px); }
+          to   { opacity: 1; transform: translateX(0); }
         }
       `}</style>
     </div>

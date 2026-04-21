@@ -18,9 +18,7 @@ export default function FavoritesPage() {
   useEffect(() => {
     async function fetchFavorites() {
       const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
 
       if (!user) {
         router.push("/login");
@@ -67,9 +65,9 @@ export default function FavoritesPage() {
             zomato_url: r.zomato_url ?? null,
             swiggy_url: r.swiggy_url ?? null,
             neighborhood: r.neighborhoods?.name ?? "",
-            cuisines: (r.restaurant_cuisines ?? []).map(
-              (rc: any) => rc.cuisines?.name
-            ).filter(Boolean),
+            cuisines: (r.restaurant_cuisines ?? [])
+              .map((rc: any) => rc.cuisines?.name)
+              .filter(Boolean),
             top_dishes: [],
           } satisfies RestaurantResult;
         })
@@ -85,31 +83,55 @@ export default function FavoritesPage() {
   return (
     <div
       className="min-h-screen flex flex-col"
-      style={{ backgroundColor: "var(--bg-primary)" }}
+      style={{
+        backgroundColor: "var(--bg-primary)",
+        paddingBottom: "env(safe-area-inset-bottom)",
+      }}
     >
       {/* Header */}
       <header
-        className="h-[60px] flex items-center gap-3 px-5 shrink-0"
+        className="flex items-center gap-3 px-4 shrink-0"
         style={{
+          height: "56px",
+          paddingTop: "env(safe-area-inset-top)",
           backgroundColor: "var(--bg-secondary)",
           borderBottom: "1px solid var(--border)",
         }}
       >
         <Link
           href="/chat"
-          className="flex items-center justify-center w-8 h-8 transition-default cursor-pointer"
-          style={{ borderRadius: "var(--radius-sm)", color: "var(--text-muted)" }}
+          className="flex items-center justify-center transition-default cursor-pointer"
+          style={{
+            width: "44px",
+            height: "44px",
+            borderRadius: "var(--radius-sm)",
+            color: "var(--text-muted)",
+          }}
         >
           <ArrowLeft className="w-5 h-5" />
         </Link>
         <Heart className="w-5 h-5" style={{ color: "var(--accent)" }} />
-        <span className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>
-          Saved Restaurants
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>
+            Saved Places
+          </span>
+          {!loading && restaurants.length > 0 && (
+            <span
+              className="text-xs font-semibold px-2 py-0.5"
+              style={{
+                backgroundColor: "var(--accent-muted)",
+                color: "var(--accent)",
+                borderRadius: "var(--radius-sm)",
+              }}
+            >
+              {restaurants.length}
+            </span>
+          )}
+        </div>
       </header>
 
       {/* Content */}
-      <main className="flex-1 px-5 py-6 max-w-5xl w-full mx-auto">
+      <main className="flex-1 px-4 py-5 max-w-5xl w-full mx-auto">
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {Array.from({ length: 6 }).map((_, i) => (
@@ -136,10 +158,10 @@ export default function FavoritesPage() {
               <Heart className="w-8 h-8" style={{ color: "var(--accent)" }} />
             </div>
             <p className="text-base font-medium" style={{ color: "var(--text-secondary)" }}>
-              No saved restaurants yet.
+              Start saving places
             </p>
             <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-              Start chatting to discover places!
+              Restaurants you save will appear here
             </p>
             <Link
               href="/chat"

@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { X, Star } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Share2, Star, X } from "lucide-react";
 import type { RestaurantResult } from "@/lib/types";
+import { handleShare } from "@/lib/share";
 
 interface RestaurantSheetProps {
   restaurant: RestaurantResult | null;
@@ -16,6 +17,19 @@ export default function RestaurantSheet({
   onAskCravely,
 }: RestaurantSheetProps) {
   const [visible, setVisible] = useState(false);
+  // true on screens narrower than 640px (Tailwind sm breakpoint)
+  const [isMobile, setIsMobile] = useState(false);
+  const touchStartY = useRef<number | null>(null);
+  const sheetRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function check() {
+      setIsMobile(window.innerWidth < 640);
+    }
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
 
   useEffect(() => {
     if (restaurant) {
@@ -30,11 +44,49 @@ export default function RestaurantSheet({
     setTimeout(onClose, 300);
   }
 
+  // Swipe-down to dismiss on mobile
+  function onTouchStart(e: React.TouchEvent) {
+    touchStartY.current = e.touches[0].clientY;
+  }
+  function onTouchEnd(e: React.TouchEvent) {
+    if (touchStartY.current === null) return;
+    const delta = e.changedTouches[0].clientY - touchStartY.current;
+    if (delta > 80) handleClose();
+    touchStartY.current = null;
+  }
+
   if (!restaurant) return null;
 
   const priceSymbol = restaurant.price_range
     ? "₹".repeat(restaurant.price_range)
     : "₹₹";
+
+  // Mobile: slides up from bottom. Desktop: slides in from right.
+  const sheetStyle = isMobile
+    ? {
+        bottom: 0,
+        left: 0,
+        right: 0,
+        top: "auto",
+        maxHeight: "92vh",
+        width: "100%",
+        borderRadius: "24px 24px 0 0",
+        borderLeft: "none",
+        borderTop: "1px solid var(--border)",
+        transform: visible ? "translateY(0)" : "translateY(100%)",
+        paddingBottom: "env(safe-area-inset-bottom)",
+      }
+    : {
+        right: 0,
+        top: 0,
+        bottom: 0,
+        left: "auto",
+        width: "100%",
+        maxWidth: "448px",
+        borderRadius: 0,
+        borderLeft: "1px solid var(--border)",
+        transform: visible ? "translateX(0)" : "translateX(100%)",
+      };
 
   return (
     <>
@@ -50,13 +102,26 @@ export default function RestaurantSheet({
 
       {/* Sheet */}
       <div
-        className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-md overflow-y-auto transition-transform duration-300"
+        ref={sheetRef}
+        className="fixed z-50 overflow-y-auto transition-transform duration-300"
         style={{
           backgroundColor: "var(--bg-secondary)",
-          borderLeft: "1px solid var(--border)",
-          transform: visible ? "translateX(0)" : "translateX(100%)",
+          WebkitOverflowScrolling: "touch",
+          ...sheetStyle,
         }}
+        onTouchStart={isMobile ? onTouchStart : undefined}
+        onTouchEnd={isMobile ? onTouchEnd : undefined}
       >
+        {/* Mobile drag handle */}
+        {isMobile && (
+          <div className="flex justify-center pt-3 pb-1 shrink-0">
+            <div
+              className="w-12 h-1 rounded-full"
+              style={{ backgroundColor: "var(--border)" }}
+            />
+          </div>
+        )}
+
         {/* Header */}
         <div
           className="sticky top-0 z-10 flex items-center justify-between p-5"
@@ -65,15 +130,20 @@ export default function RestaurantSheet({
             borderBottom: "1px solid var(--border)",
           }}
         >
-          <h2 className="text-2xl font-bold text-text-primary">
+          <h2 className="text-xl font-bold text-text-primary pr-4 leading-tight">
             {restaurant.name}
           </h2>
           <button
             onClick={handleClose}
-            className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer transition-default"
+            className="flex items-center justify-center cursor-pointer transition-default shrink-0"
             style={{
+              width: "36px",
+              height: "36px",
+              minHeight: "unset",
+              minWidth: "unset",
               backgroundColor: "var(--bg-elevated)",
               border: "1px solid var(--border)",
+              borderRadius: "50%",
             }}
           >
             <X className="w-4 h-4 text-text-secondary" />
@@ -107,7 +177,7 @@ export default function RestaurantSheet({
           </div>
 
           {/* Rating row */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 flex-wrap">
             {restaurant.avg_rating && (
               <div className="flex items-center gap-1.5">
                 <Star className="w-4 h-4 fill-star text-star" />
@@ -131,9 +201,7 @@ export default function RestaurantSheet({
               />
               <span
                 style={{
-                  color: restaurant.is_pure_veg
-                    ? "var(--veg)"
-                    : "var(--non-veg)",
+                  color: restaurant.is_pure_veg ? "var(--veg)" : "var(--non-veg)",
                 }}
               >
                 {restaurant.is_pure_veg ? "Pure Veg" : "Non-Veg"}
@@ -152,9 +220,7 @@ export default function RestaurantSheet({
           {restaurant.address && (
             <div>
               <h3 className="label-text mb-1">Address</h3>
-              <p className="text-sm text-text-primary">
-                {restaurant.address}
-              </p>
+              <p className="text-sm text-text-primary">{restaurant.address}</p>
             </div>
           )}
 
@@ -173,9 +239,7 @@ export default function RestaurantSheet({
                       borderRadius: "var(--radius-sm)",
                     }}
                   >
-                    <span className="text-sm text-text-primary">
-                      {dish}
-                    </span>
+                    <span className="text-sm text-text-primary">{dish}</span>
                   </div>
                 ))}
               </div>
@@ -236,10 +300,14 @@ export default function RestaurantSheet({
                 href={restaurant.zomato_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex-1 py-2.5 text-center text-sm font-semibold text-white transition-default"
+                className="flex-1 py-3 text-center text-sm font-semibold text-white transition-default"
                 style={{
                   backgroundColor: "var(--accent)",
                   borderRadius: "var(--radius-md)",
+                  minHeight: "44px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
                 }}
               >
                 Zomato
@@ -250,12 +318,16 @@ export default function RestaurantSheet({
                 href={restaurant.swiggy_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex-1 py-2.5 text-center text-sm font-semibold transition-default"
+                className="flex-1 py-3 text-center text-sm font-semibold transition-default"
                 style={{
                   backgroundColor: "var(--bg-elevated)",
                   border: "1px solid var(--border)",
                   color: "var(--text-primary)",
                   borderRadius: "var(--radius-md)",
+                  minHeight: "44px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
                 }}
               >
                 Swiggy
@@ -271,9 +343,26 @@ export default function RestaurantSheet({
               backgroundColor: "var(--accent-muted)",
               color: "var(--accent)",
               borderRadius: "var(--radius-md)",
+              minHeight: "44px",
             }}
           >
             Ask Cravely about this place
+          </button>
+
+          {/* Share */}
+          <button
+            onClick={() => handleShare(restaurant)}
+            className="w-full py-3 text-sm font-medium cursor-pointer transition-default flex items-center justify-center gap-2"
+            style={{
+              backgroundColor: "var(--bg-elevated)",
+              border: "1px solid var(--border)",
+              color: "var(--text-secondary)",
+              borderRadius: "var(--radius-md)",
+              minHeight: "44px",
+            }}
+          >
+            <Share2 className="w-4 h-4" />
+            Share
           </button>
         </div>
       </div>

@@ -50,8 +50,10 @@ export default function Header({ activeView, onViewChange }: HeaderProps) {
 
   return (
     <header
-      className="h-[60px] flex items-center justify-between px-5 shrink-0"
+      className="flex items-center justify-between px-4 shrink-0"
       style={{
+        height: "56px",
+        paddingTop: "env(safe-area-inset-top)",
         backgroundColor: "var(--bg-secondary)",
         borderBottom: "1px solid var(--border)",
       }}
@@ -63,8 +65,8 @@ export default function Header({ activeView, onViewChange }: HeaderProps) {
         </span>
       </div>
 
-      {/* View toggle — hidden on mobile, shown on desktop */}
-      <div className="hidden md:flex items-center gap-1">
+      {/* View toggle — desktop only */}
+      <div className="hidden sm:flex items-center gap-1">
         {VIEWS.map((v) => (
           <button
             key={v.key}
@@ -87,22 +89,28 @@ export default function Header({ activeView, onViewChange }: HeaderProps) {
         ))}
       </div>
 
-      {/* Favorites link */}
-      <Link
-        href="/favorites"
-        className="shrink-0 w-8 h-8 flex items-center justify-center transition-default"
-        style={{ borderRadius: "var(--radius-sm)", color: "var(--text-muted)" }}
-        title="Saved restaurants"
-      >
-        <Heart className="w-5 h-5" />
-      </Link>
+      {/* Right side: favorites + avatar */}
+      <div className="flex items-center gap-2 shrink-0">
+        <Link
+          href="/favorites"
+          className="flex items-center justify-center transition-default"
+          style={{
+            width: "44px",
+            height: "44px",
+            borderRadius: "var(--radius-sm)",
+            color: "var(--text-muted)",
+          }}
+          title="Saved restaurants"
+        >
+          <Heart className="w-5 h-5" />
+        </Link>
 
-      {/* User avatar dropdown */}
-      <div className="shrink-0">
         <DropdownMenu>
           <DropdownMenuTrigger
-            className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold cursor-pointer transition-default outline-none"
+            className="rounded-full flex items-center justify-center text-sm font-bold cursor-pointer transition-default outline-none"
             style={{
+              width: "36px",
+              height: "36px",
               backgroundColor: "var(--accent)",
               color: "#FFFFFF",
             }}
