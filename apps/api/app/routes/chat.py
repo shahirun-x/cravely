@@ -5,14 +5,17 @@ Chat API route — the main user-facing endpoint.
 import asyncio
 import json
 import logging
+import os
 import re
 import uuid
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import JSONResponse
 from pydantic import UUID4, BaseModel, Field, field_validator
 from main import limiter
 from app.dependencies.auth import verify_supabase_token
+from app.middleware.ratelimit import check_user_rate_limit
 
 from app.agent.graph import agent
 from app.db.connection import get_db
@@ -130,6 +133,57 @@ async def _log_conversation(
 
 
 # ---------------------------------------------------------------------------
+# Session flood guard helpers (Redis-backed)
+# ---------------------------------------------------------------------------
+_SESSION_BURST_LIMIT = 10   # messages
+_SESSION_BURST_WINDOW = 60  # seconds
+_SESSION_BLOCK_TTL = 300    # 5 minutes
+
+
+def _get_redis():
+    try:
+        from upstash_redis import Redis  # noqa: PLC0415
+        url = os.getenv("UPSTASH_REDIS_REST_URL")
+        token = os.getenv("UPSTASH_REDIS_REST_TOKEN")
+        if url and token:
+            return Redis(url=url, token=token)
+    except Exception:
+        pass
+    return None
+
+
+async def _check_session_flood(session_id: str) -> tuple[bool, str]:
+    """
+    Returns (blocked: bool, message: str).
+    Blocks the session for 5 min if it exceeds 10 messages in 60 seconds.
+    """
+    redis = _get_redis()
+    if redis is None:
+        return False, ""
+
+    try:
+        block_key = f"blocked:session:{session_id}"
+        if redis.exists(block_key):
+            ttl = redis.ttl(block_key)
+            return True, f"You're sending messages too fast. Please wait {max(1, ttl)} seconds."
+
+        burst_key = f"session:burst:{session_id}"
+        count = redis.incr(burst_key)
+        if count == 1:
+            redis.expire(burst_key, _SESSION_BURST_WINDOW)
+
+        if count > _SESSION_BURST_LIMIT:
+            redis.set(block_key, "1", ex=_SESSION_BLOCK_TTL)
+            redis.delete(burst_key)
+            logger.warning("Session flood detected, soft-blocking session %s", session_id[:8])
+            return True, "You're sending messages too fast. Please wait a moment."
+    except Exception as exc:
+        logger.warning("Session flood check Redis error (failing open): %s", exc)
+
+    return False, ""
+
+
+# ---------------------------------------------------------------------------
 # Endpoint
 # ---------------------------------------------------------------------------
 @router.post("/chat", response_model=AgentResponse)
@@ -152,6 +206,25 @@ async def chat(
 
     session_id = str(request.session_id) if request.session_id else str(uuid.uuid4())
     user_id_str = str(request.user_id) if request.user_id else None
+
+    # --- Per-user hourly limit ---
+    if user_id_str:
+        allowed, retry = check_user_rate_limit(user_id_str)
+        if not allowed:
+            return JSONResponse(
+                status_code=429,
+                headers={"Retry-After": str(retry)},
+                content={"error": "Rate limit exceeded. Try again later."},
+            )
+
+    # --- Session flood guard ---
+    flood_blocked, flood_msg = await _check_session_flood(session_id)
+    if flood_blocked:
+        return JSONResponse(
+            status_code=429,
+            headers={"Retry-After": str(_SESSION_BLOCK_TTL)},
+            content={"error": flood_msg},
+        )
 
     initial_state = {
         "message": request.message,

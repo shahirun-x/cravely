@@ -1,0 +1,1 @@
+web: uvicorn main:app --host 0.0.0.0 --port $PORT --workers 2 --limit-concurrency 50 --timeout-keep-alive 5 --backlog 128 --timeout-graceful-shutdown 10 --h11-max-incomplete-event-size 16384

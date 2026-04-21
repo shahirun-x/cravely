@@ -12,3 +12,4 @@ groq
 httpx
 slowapi
 python-jose[cryptography]
+upstash-ratelimit

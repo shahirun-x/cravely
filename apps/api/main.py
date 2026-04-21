@@ -1,8 +1,35 @@
 import logging
 import os
+import sys
 from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
+
+# Load environment variables before anything else
+load_dotenv()
+
+# ---------------------------------------------------------------------------
+# Startup env var validation — fail fast so Railway shows the error clearly
+# ---------------------------------------------------------------------------
+_REQUIRED_ENV_VARS = [
+    "SUPABASE_DATABASE_URL",
+    "SUPABASE_JWT_SECRET",
+    "GROQ_API_KEY",
+    "GOOGLE_GEMINI_API_KEY",
+    "UPSTASH_REDIS_REST_URL",
+    "UPSTASH_REDIS_REST_TOKEN",
+]
+
+def _check_required_env_vars() -> None:
+    missing = [v for v in _REQUIRED_ENV_VARS if not os.getenv(v)]
+    if missing:
+        sys.exit(
+            f"[startup] Missing required environment variables: {', '.join(missing)}\n"
+            "Set them in Railway's Variables panel before deploying."
+        )
+
+_check_required_env_vars()
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -11,21 +38,20 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from slowapi.util import get_remote_address
 
-# Load environment variables before anything else
-load_dotenv()
-
 from google import genai
 
 from app.agent.nodes import set_gemini_client as set_nodes_client
 from app.db.connection import open_pool, close_pool
+from app.middleware.blocklist import IPBlocklistMiddleware
 from app.middleware.logging import RequestLoggingMiddleware
+from app.middleware.ratelimit import RedisRateLimitMiddleware
 from app.routes.chat import router as chat_router
 from app.tools.search import set_gemini_client as set_tools_client
 
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Rate limiter (shared instance imported by routers)
+# slowapi limiter — kept for the @limiter.limit decorators on individual routes
 # ---------------------------------------------------------------------------
 limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
 
@@ -56,20 +82,24 @@ app = FastAPI(
     description="AI-powered food discovery chatbot backend",
     version="0.1.0",
     lifespan=lifespan,
-    # Never expose internal details in error responses
     openapi_url=None,
     docs_url=None,
     redoc_url=None,
 )
 
 # ---------------------------------------------------------------------------
-# Request logging (register before rate limiting so all requests are logged)
+# Middleware stack (outermost → innermost = registration order reversed)
+# Register IP blocklist first so blocked IPs are rejected before any other work
 # ---------------------------------------------------------------------------
+app.add_middleware(IPBlocklistMiddleware)
+
+# Request logging — runs after blocklist so blocked IPs are not logged as valid
 app.add_middleware(RequestLoggingMiddleware)
 
-# ---------------------------------------------------------------------------
-# Rate limiting
-# ---------------------------------------------------------------------------
+# Upstash Redis-backed distributed rate limiting
+app.add_middleware(RedisRateLimitMiddleware)
+
+# In-process slowapi (per-route decorators)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
@@ -90,7 +120,7 @@ app.add_middleware(
 )
 
 # ---------------------------------------------------------------------------
-# Security headers middleware
+# Security headers
 # ---------------------------------------------------------------------------
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
@@ -105,16 +135,13 @@ async def add_security_headers(request: Request, call_next):
     return response
 
 # ---------------------------------------------------------------------------
-# Global 500 handler — never leak stack traces to clients
+# Exception handlers
 # ---------------------------------------------------------------------------
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception):
     logger.exception("Unhandled error on %s %s", request.method, request.url.path)
     return JSONResponse(status_code=500, content={"error": "Something went wrong"})
 
-# ---------------------------------------------------------------------------
-# Custom 429 response — override slowapi's default plain-text handler
-# ---------------------------------------------------------------------------
 @app.exception_handler(RateLimitExceeded)
 async def rate_limit_handler(request: Request, exc: RateLimitExceeded):  # noqa: ARG001
     return JSONResponse(
