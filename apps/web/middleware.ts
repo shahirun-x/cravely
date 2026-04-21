@@ -7,7 +7,7 @@ export function middleware(request: NextRequest) {
     cookie.name.startsWith('sb-') && cookie.name.includes('-auth-token')
   )
   
-  const protectedRoutes = ['/chat', '/onboarding', '/profile']
+  const protectedRoutes = ['/chat', '/onboarding', '/profile', '/favorites']
   const isProtected = protectedRoutes.some(route => 
     request.nextUrl.pathname.startsWith(route)
   )
@@ -25,5 +25,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/chat/:path*', '/onboarding/:path*', '/profile/:path*', '/login']
+  matcher: ['/chat/:path*', '/onboarding/:path*', '/profile/:path*', '/favorites/:path*', '/login']
 }

@@ -2,8 +2,9 @@
 
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useEffect, useState } from "react";
-import { LogOut } from "lucide-react";
+import { Heart, LogOut } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -85,6 +86,16 @@ export default function Header({ activeView, onViewChange }: HeaderProps) {
           </button>
         ))}
       </div>
+
+      {/* Favorites link */}
+      <Link
+        href="/favorites"
+        className="shrink-0 w-8 h-8 flex items-center justify-center transition-default"
+        style={{ borderRadius: "var(--radius-sm)", color: "var(--text-muted)" }}
+        title="Saved restaurants"
+      >
+        <Heart className="w-5 h-5" />
+      </Link>
 
       {/* User avatar dropdown */}
       <div className="shrink-0">
