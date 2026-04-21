@@ -117,6 +117,8 @@ async def filter_search(
     cuisine: Optional[str] = None,
     price_range: Optional[int] = None,
     is_veg: Optional[bool] = None,
+    max_price: Optional[int] = None,
+    min_price: Optional[int] = None,
     limit: int = 10,
 ) -> list[dict]:
     """
@@ -140,9 +142,18 @@ async def filter_search(
         """)
         params.append(cuisine)
         param_idx += 1
-    if price_range is not None:
+    if max_price is not None:
+        conditions.append(f"r.price_range_max <= ${param_idx}")
+        params.append(max_price)
+        param_idx += 1
+    elif price_range is not None:
+        # Fall back to categorical price_range only when no exact price given
         conditions.append(f"r.price_range = ${param_idx}")
         params.append(price_range)
+        param_idx += 1
+    if min_price is not None:
+        conditions.append(f"r.price_range_max >= ${param_idx}")
+        params.append(min_price)
         param_idx += 1
     if is_veg is True:
         conditions.append("r.is_pure_veg = true")

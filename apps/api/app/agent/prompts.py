@@ -22,7 +22,15 @@ near, nearby, around, close, area, neighborhood, zone, locality, Velachery,
 Besant Nagar, Thiruvanmiyur, Tambaram, Porur, Guindy, Egmore, Kodambakkam
 
 Rule 3: Any message containing ANY price word -> intent is "find_restaurant".
-Price words: cheap, budget, affordable, expensive, premium, luxury, under, less than
+Price words: cheap, budget, affordable, expensive, premium, luxury, under, below, less than, rupees, ₹
+
+Price extraction rules (takes priority over price_range):
+- "under ₹300", "below 300", "under 300 rupees", "less than 300" → max_price: 300
+- "under ₹500", "below 500" → max_price: 500
+- "budget food", "cheap eats", "cheap food", "affordable" → max_price: 200
+- "mid range", "mid-range", "moderate" → max_price: 500
+- "premium", "fine dining", "luxury", "high end" → min_price: 800
+- Any explicit numeric amount with rupee indicator → extract that number as max_price
 
 Rule 4: Greetings, thanks, general questions with NO food/location/price words -> "chitchat"
 
@@ -46,7 +54,9 @@ Extracted Parameters:
 - neighborhood: string or null (one of: T. Nagar, Adyar, Mylapore, Anna Nagar, OMR, Nungambakkam, Velachery, Besant Nagar, Thiruvanmiyur, Tambaram, Porur, Guindy, Egmore, Kodambakkam)
 - cuisine: string or null (e.g. South Indian, Chettinad, Chinese, North Indian, Italian, Seafood, Street Food, Cafe)
 - is_veg: true, false, or null
-- price_range: 1 (budget), 2 (mid-range), 3 (premium), or null
+- price_range: 1 (budget), 2 (mid-range), 3 (premium), or null — only use when no explicit numeric price is given
+- max_price: integer or null — exact upper price limit in rupees (e.g. 300 for "under ₹300")
+- min_price: integer or null — exact lower price limit in rupees (e.g. 800 for "premium")
 - query_text: descriptive search query string (ALWAYS fill this for find_restaurant)
 - item_name: specific dish name or null
 - restaurant_name: specific restaurant name or null
@@ -109,7 +119,28 @@ User: "seafood restaurant"
 {"intent": "find_restaurant", "extracted_params": {"neighborhood": null, "cuisine": "Seafood", "is_veg": false, "price_range": null, "query_text": "seafood restaurants in Chennai", "item_name": null, "restaurant_name": null, "restaurant_id": null}, "needs_clarification": false, "clarification_question": null}
 
 User: "budget meal under 150"
-{"intent": "find_restaurant", "extracted_params": {"neighborhood": null, "cuisine": null, "is_veg": null, "price_range": 1, "query_text": "budget meals under 150 rupees in Chennai", "item_name": null, "restaurant_name": null, "restaurant_id": null}, "needs_clarification": false, "clarification_question": null}
+{"intent": "find_restaurant", "extracted_params": {"neighborhood": null, "cuisine": null, "is_veg": null, "price_range": 1, "max_price": 150, "min_price": null, "query_text": "budget meals under 150 rupees in Chennai", "item_name": null, "restaurant_name": null, "restaurant_id": null}, "needs_clarification": false, "clarification_question": null}
+
+User: "food under ₹300"
+{"intent": "find_restaurant", "extracted_params": {"neighborhood": null, "cuisine": null, "is_veg": null, "price_range": 1, "max_price": 300, "min_price": null, "query_text": "food under 300 rupees in Chennai", "item_name": null, "restaurant_name": null, "restaurant_id": null}, "needs_clarification": false, "clarification_question": null}
+
+User: "below 500 rupees restaurant"
+{"intent": "find_restaurant", "extracted_params": {"neighborhood": null, "cuisine": null, "is_veg": null, "price_range": 2, "max_price": 500, "min_price": null, "query_text": "restaurants below 500 rupees in Chennai", "item_name": null, "restaurant_name": null, "restaurant_id": null}, "needs_clarification": false, "clarification_question": null}
+
+User: "budget food"
+{"intent": "find_restaurant", "extracted_params": {"neighborhood": null, "cuisine": null, "is_veg": null, "price_range": 1, "max_price": 200, "min_price": null, "query_text": "budget food restaurants in Chennai", "item_name": null, "restaurant_name": null, "restaurant_id": null}, "needs_clarification": false, "clarification_question": null}
+
+User: "cheap eats"
+{"intent": "find_restaurant", "extracted_params": {"neighborhood": null, "cuisine": null, "is_veg": null, "price_range": 1, "max_price": 200, "min_price": null, "query_text": "cheap affordable food in Chennai", "item_name": null, "restaurant_name": null, "restaurant_id": null}, "needs_clarification": false, "clarification_question": null}
+
+User: "mid range restaurants"
+{"intent": "find_restaurant", "extracted_params": {"neighborhood": null, "cuisine": null, "is_veg": null, "price_range": 2, "max_price": 500, "min_price": null, "query_text": "mid range restaurants in Chennai", "item_name": null, "restaurant_name": null, "restaurant_id": null}, "needs_clarification": false, "clarification_question": null}
+
+User: "fine dining in Nungambakkam"
+{"intent": "find_restaurant", "extracted_params": {"neighborhood": "Nungambakkam", "cuisine": null, "is_veg": null, "price_range": 3, "max_price": null, "min_price": 800, "query_text": "fine dining premium restaurants in Nungambakkam Chennai", "item_name": null, "restaurant_name": null, "restaurant_id": null}, "needs_clarification": false, "clarification_question": null}
+
+User: "premium biryani"
+{"intent": "find_restaurant", "extracted_params": {"neighborhood": null, "cuisine": null, "is_veg": null, "price_range": 3, "max_price": null, "min_price": 800, "query_text": "premium biryani restaurants in Chennai", "item_name": "biryani", "restaurant_name": null, "restaurant_id": null}, "needs_clarification": false, "clarification_question": null}
 
 User: "rooftop cafe nungambakkam"
 {"intent": "find_restaurant", "extracted_params": {"neighborhood": "Nungambakkam", "cuisine": null, "is_veg": null, "price_range": null, "query_text": "rooftop cafe in Nungambakkam Chennai", "item_name": null, "restaurant_name": null, "restaurant_id": null}, "needs_clarification": false, "clarification_question": null}
@@ -130,7 +161,7 @@ User: "help"
 {"intent": "chitchat", "extracted_params": {}, "needs_clarification": false, "clarification_question": null}
 
 OUTPUT FORMAT -- strict JSON only, no markdown, no extra text:
-{"intent": "...", "extracted_params": {"neighborhood": ..., "cuisine": ..., "is_veg": ..., "price_range": ..., "query_text": "...", "item_name": ..., "restaurant_name": ..., "restaurant_id": ...}, "needs_clarification": false, "clarification_question": null}
+{"intent": "...", "extracted_params": {"neighborhood": ..., "cuisine": ..., "is_veg": ..., "price_range": ..., "max_price": ..., "min_price": ..., "query_text": "...", "item_name": ..., "restaurant_name": ..., "restaurant_id": ...}, "needs_clarification": false, "clarification_question": null}
 """
 
 RESPONSE_FORMATTER_PROMPT = """\

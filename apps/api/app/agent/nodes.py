@@ -193,6 +193,8 @@ async def query_builder_node(state: AgentState) -> dict[str, Any]:
             params.get("cuisine"),
             params.get("price_range") is not None and params.get("price_range"),
             params.get("is_veg") is not None,
+            params.get("max_price") is not None,
+            params.get("min_price") is not None,
         ])
 
         if has_filter_params:
@@ -237,6 +239,8 @@ async def executor_node(state: AgentState) -> dict[str, Any]:
                     cuisine=params.get("cuisine"),
                     price_range=params.get("price_range"),
                     is_veg=params.get("is_veg"),
+                    max_price=params.get("max_price"),
+                    min_price=params.get("min_price"),
                 )
 
                 # Fallback: if filter_search returned 0 results, try semantic_search
