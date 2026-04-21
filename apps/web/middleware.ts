@@ -4,7 +4,7 @@ import type { NextRequest } from 'next/server'
 export function middleware(request: NextRequest) {
   const cookies = request.cookies.getAll()
   const hasSession = cookies.some(cookie => 
-    cookie.name.startsWith('sb-') && cookie.name.endsWith('-auth-token')
+    cookie.name.startsWith('sb-') && cookie.name.includes('-auth-token')
   )
   
   const protectedRoutes = ['/chat', '/onboarding', '/profile']
