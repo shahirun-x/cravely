@@ -13,7 +13,7 @@ load_dotenv()
 # ---------------------------------------------------------------------------
 _REQUIRED_ENV_VARS = [
     "SUPABASE_DATABASE_URL",
-    "SUPABASE_JWT_SECRET",
+    "SUPABASE_URL",
     "GROQ_API_KEY",
     "GOOGLE_GEMINI_API_KEY",
     "UPSTASH_REDIS_REST_URL",
