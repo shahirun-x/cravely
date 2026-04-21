@@ -8,6 +8,7 @@ import { Star, ArrowUp } from "lucide-react";
 
 interface ChatPanelProps {
   onRestaurantClick?: (restaurant: RestaurantResult) => void;
+  onRestaurantsUpdate?: (restaurants: RestaurantResult[]) => void;
 }
 
 const SUGGESTIONS = [
@@ -17,104 +18,7 @@ const SUGGESTIONS = [
   "Late night food in OMR",
 ];
 
-function RestaurantCard({
-  restaurant,
-  onClick,
-}: {
-  restaurant: RestaurantResult;
-  onClick: () => void;
-}) {
-  const priceSymbol = restaurant.price_range
-    ? "₹".repeat(restaurant.price_range)
-    : "₹₹";
-
-  return (
-    <button
-      onClick={onClick}
-      className="w-full text-left p-4 transition-default cursor-pointer group"
-      style={{
-        backgroundColor: "var(--bg-card)",
-        border: "1px solid var(--border)",
-        borderRadius: "var(--radius-md)",
-      }}
-      onMouseEnter={(e) =>
-        (e.currentTarget.style.borderColor = "rgba(255, 107, 53, 0.3)")
-      }
-      onMouseLeave={(e) =>
-        (e.currentTarget.style.borderColor = "var(--border)")
-      }
-    >
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <h4 className="font-semibold text-[15px] truncate text-text-primary">
-            {restaurant.name}
-          </h4>
-          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-            <span
-              className="text-[11px] px-2.5 py-1 text-text-muted"
-              style={{
-                backgroundColor: "var(--bg-elevated)",
-                borderRadius: "var(--radius-sm)",
-              }}
-            >
-              {restaurant.neighborhood}
-            </span>
-            {restaurant.cuisines?.slice(0, 2).map((c) => (
-              <span
-                key={c}
-                className="text-[11px] px-2.5 py-1 text-text-muted"
-                style={{
-                  backgroundColor: "var(--bg-elevated)",
-                  borderRadius: "var(--radius-sm)",
-                }}
-              >
-                {c}
-              </span>
-            ))}
-          </div>
-        </div>
-        <div className="flex flex-col items-end gap-1 shrink-0">
-          {restaurant.avg_rating && (
-            <span className="flex items-center gap-1 text-[13px] text-text-secondary">
-              <Star className="w-3.5 h-3.5 fill-star text-star" />
-              {restaurant.avg_rating}
-            </span>
-          )}
-          <span className="text-[13px] text-text-muted">{priceSymbol}</span>
-          <span className="flex items-center gap-1.5">
-            <span
-              className="w-2 h-2 rounded-full"
-              style={{
-                backgroundColor: restaurant.is_pure_veg
-                  ? "var(--veg)"
-                  : "var(--non-veg)",
-              }}
-            />
-            <span className="text-xs text-text-muted">
-              {restaurant.is_pure_veg ? "Veg" : "Non-veg"}
-            </span>
-          </span>
-        </div>
-      </div>
-      <button
-        className="mt-3 w-full py-2 text-xs font-medium transition-default cursor-pointer"
-        style={{
-          backgroundColor: "var(--accent-muted)",
-          color: "var(--accent)",
-          borderRadius: "var(--radius-sm)",
-        }}
-        onClick={(e) => {
-          e.stopPropagation();
-          onClick();
-        }}
-      >
-        Ask Cravely
-      </button>
-    </button>
-  );
-}
-
-export default function ChatPanel({ onRestaurantClick }: ChatPanelProps) {
+export default function ChatPanel({ onRestaurantClick, onRestaurantsUpdate }: ChatPanelProps) {
   console.log('user:', 'none', 'session:', typeof window !== 'undefined' ? sessionStorage.getItem("cravely-session-id") : 'server');
   
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -183,6 +87,9 @@ export default function ChatPanel({ onRestaurantClick }: ChatPanelProps) {
         };
 
         setMessages((prev) => [...prev, botMsg]);
+        if (onRestaurantsUpdate && response.restaurants) {
+          onRestaurantsUpdate(response.restaurants);
+        }
       } catch (error: any) {
         console.error("Chat request failed:", error);
         const errorMsg: ChatMessage = {
@@ -312,21 +219,7 @@ export default function ChatPanel({ onRestaurantClick }: ChatPanelProps) {
                     {formatTime(msg.timestamp)}
                   </span>
 
-                  {/* Restaurant cards */}
-                  {msg.restaurants.length > 0 && (
-                    <div className="mt-2 space-y-2">
-                      {msg.restaurants.map((r) => (
-                        <RestaurantCard
-                          key={r.id || r.name}
-                          restaurant={r}
-                          onClick={() => {
-                            if (onRestaurantClick) onRestaurantClick(r);
-                            else sendMessage(`Tell me more about ${r.name}`);
-                          }}
-                        />
-                      ))}
-                    </div>
-                  )}
+
                 </div>
               </div>
             </div>
