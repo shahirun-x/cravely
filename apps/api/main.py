@@ -68,6 +68,8 @@ from app.routes.search import router as search_router
 app.include_router(search_router, tags=["search"])
 from app.routes.whatsapp import router as whatsapp_router
 app.include_router(whatsapp_router, prefix="/api/v1", tags=["whatsapp"])
+from app.routes.admin import router as admin_router
+app.include_router(admin_router, tags=["admin"])
 
 
 @app.get("/health")
