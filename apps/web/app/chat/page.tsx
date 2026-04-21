@@ -37,46 +37,33 @@ export default function ChatPage() {
       <div className="flex-1 flex overflow-hidden">
         {/* Chat panel — always mounted to preserve history, hidden via CSS on mobile when other view active */}
         <div
-          className={`w-full lg:w-[400px] lg:shrink-0 flex flex-col ${
-            activeView !== "chat" ? "hidden lg:flex" : "flex"
+          className={`w-full flex-col ${
+            activeView === "chat" ? "flex flex-1" : "hidden lg:flex lg:w-[400px] lg:shrink-0"
           }`}
-          style={{ borderRight: "1px solid var(--border)" }}
+          style={{ borderRight: activeView !== "chat" ? "1px solid var(--border)" : "none" }}
         >
-          <ChatPanel onRestaurantClick={handleRestaurantClick} />
+          <div className={`w-full h-full flex flex-col mx-auto ${activeView === "chat" ? "lg:max-w-3xl" : ""}`}>
+            <ChatPanel onRestaurantClick={handleRestaurantClick} />
+          </div>
         </div>
 
         {/* Right panel — Search or Map */}
-        <div
-          className={`flex-1 ${
-            activeView === "chat" ? "hidden lg:flex" : "flex"
-          }`}
-        >
-          {activeView === "search" && (
-            <SearchPanel
-              onAskCravely={handleAskCravely}
-              onRestaurantClick={handleRestaurantClick}
-            />
-          )}
-          {activeView === "map" && (
-            <MapPanel
-              restaurants={[]}
-              onAskCravely={handleAskCravely}
-            />
-          )}
-          {/* Default right panel when chat is active on desktop */}
-          {activeView === "chat" && (
-            <div className="flex-1 flex items-center justify-center h-full text-center px-6 bg-bg-primary">
-              <div>
-                <p className="text-sm font-medium text-text-secondary">
-                  Chat with Cravely
-                </p>
-                <p className="text-xs mt-1 text-text-muted">
-                  Switch to Search or Map to explore restaurants
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
+        {activeView !== "chat" && (
+          <div className="flex-1 flex">
+            {activeView === "search" && (
+              <SearchPanel
+                onAskCravely={handleAskCravely}
+                onRestaurantClick={handleRestaurantClick}
+              />
+            )}
+            {activeView === "map" && (
+              <MapPanel
+                restaurants={[]}
+                onAskCravely={handleAskCravely}
+              />
+            )}
+          </div>
+        )}
       </div>
 
       {/* Restaurant detail sheet */}
