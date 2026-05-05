@@ -4,6 +4,7 @@ asyncpg
 pgvector
 google-genai
 langgraph
+langchain-google-genai
 upstash-redis
 python-dotenv
 pydantic

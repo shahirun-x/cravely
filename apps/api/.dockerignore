@@ -1,0 +1,13 @@
+.venv
+venv
+__pycache__
+*.pyc
+*.pyo
+.env
+.env.example
+data/
+scripts/
+db/
+*.md
+.git
+.gitignore
